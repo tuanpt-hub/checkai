@@ -17,6 +17,7 @@ export default route(async (req, res) => {
   const model = selectedModel('judge', b.model, MODELS());
   const { used, limit } = await bump(user.email, 1);
   const r = await askClaude({ prompt, web: false, maxTokens, model, deadline: Date.now() + 100_000 });
+  if (r.truncated) throw new HttpError(502, 'output_limit', 'Claude đã dùng hết giới hạn token; kết quả chưa hoàn chỉnh. Giảm số câu trong lô chấm hoặc chọn model giám khảo Haiku 5.5.', { model: r.model });
   if (b.json) {
     const parsed = extractJSON(r.text);
     if (parsed === null) throw new HttpError(502, 'invalid_json', 'Claude trả về sai định dạng JSON.');
