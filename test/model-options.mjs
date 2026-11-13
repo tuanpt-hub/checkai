@@ -6,7 +6,7 @@ process.env.AI_GATEWAY_API_KEY='test';
 const defaults=MODELS(),options=modelOptions(defaults);
 assert.equal(selectedModel('openai','openai/gpt-5-mini',defaults),'openai/gpt-5-mini');
 assert.throws(()=>selectedModel('openai','anthropic/claude-haiku-5.5',defaults),e=>e.code==='bad_model');
-assert.throws(()=>selectedModel('judge','openai/gpt-5-mini',defaults),e=>e.code==='bad_model');
+assert.equal(selectedModel('judge','openai/gpt-5-mini',defaults),'openai/gpt-5-mini');
 assert.throws(()=>selectedModel('claude',{},defaults),e=>e.code==='bad_model');
 assert.equal(selectedModel('judge',undefined,defaults),defaults.judge);
 assert.equal(selectedModel('openai','openai/gpt-6-luna',defaults),'openai/gpt-6-luna');

@@ -2,6 +2,7 @@ import { HttpError, httpJSON, envInt } from './util.js';
 import { gatewayEnabled, gatewayModels, askGateway } from './gateway.js';
 import { gatewayFailure } from './gateway-errors.js';
 import { searchLocation } from './search-location.js';
+import { claudeThinking, claudeOutputError } from './claude-output.js';
 
 /* ---------- cấu hình ---------- */
 export const MODELS = () => gatewayEnabled() ? gatewayModels() : ({
@@ -67,7 +68,7 @@ export function parseAnthropic(blocks, sources = new Map(), queries = []) {
   return { text: use.map((b) => b.text).join('').trim(), sources, queries };
 }
 
-export async function askClaude({ prompt, system, web = false, maxTokens = 1500, model, deadline }) {
+export async function askClaude({ prompt, system, web = false, maxTokens = 1500, model, deadline, retries, maxRetries }) {
   const viaGateway = gatewayEnabled();
   const key = needKey(viaGateway ? 'AI_GATEWAY_API_KEY' : 'ANTHROPIC_API_KEY', 'Claude');
   // Native Messages preserves Anthropic search blocks, citations and pause_turn.
@@ -82,16 +83,16 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
     user_location: searchLocation('claude'),
   };
   let messages = [{ role: 'user', content: prompt }];
-  let all = [];
+  let all = [], lastMessage = null;
   let usage = { in: 0, out: 0, searches: 0 };
   for (let loop = 0; loop < 3; loop++) {
     if (Date.now() >= deadline) throw new HttpError(504, 'timeout', 'Claude: hết thời gian chờ.');
     const r = await httpJSON(url, {
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: { model, max_tokens: maxTokens, messages, ...(system ? { system } : {}), ...(web ? { tools: [tool] } : {}) },
+      body: { model, max_tokens: maxTokens, ...claudeThinking(model, web), messages, ...(system ? { system } : {}), ...(web ? { tools: [tool] } : {}) },
       deadline,
       timeoutMs: Math.max(1, Math.min(90000, (deadline || Date.now() + 90000) - Date.now())),
-      retries: viaGateway ? 0 : 2,
+      retries: retries ?? (viaGateway ? 0 : 2),
     });
     if (r.status !== 200 || !r.json) {
       if (viaGateway) throw gatewayFailure(Object.assign(new Error(r.json?.error?.message || r.json?.message || 'Gateway Messages request failed'), {
@@ -99,8 +100,9 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
       }), { engine: 'claude', model, prompt, system });
       throw mapErr('Claude', r);
     }
-    const j = r.json;
-    all = all.concat(j.content || []);
+    const j = r.json;lastMessage = j;
+    if (!Array.isArray(j.content) || j.content.some(b => !b || typeof b !== 'object' || Array.isArray(b))) throw claudeOutputError(j, [], model, 'invalid_provider_response');
+    all = all.concat(j.content);
     usage.in += j.usage?.input_tokens || 0;
     usage.out += j.usage?.output_tokens || 0;
     usage.searches += j.usage?.server_tool_use?.web_search_requests || 0;
@@ -109,6 +111,7 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
       continue;
     }
     const p = parseAnthropic(all);
+    if (!p.text) throw claudeOutputError(j, all, model);
     return finish('claude', model, t0, {
       text: p.text,
       sources: [...p.sources.values()],
@@ -119,6 +122,7 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
     });
   }
   const p = parseAnthropic(all);
+  if (!p.text) throw claudeOutputError(lastMessage, all, model);
   return finish('claude', model, t0, { text: p.text, sources: [...p.sources.values()], queries: p.queries, truncated: true, usage, ...(web ? { searchLocation: searchLocation('claude') } : {}) });
 }
 
@@ -147,8 +151,8 @@ export function parseOpenAI(output) {
   return { text: text.trim(), sources, queries };
 }
 
-export async function askOpenAI({ prompt, system, web = false, maxTokens = 4000, model, deadline }) {
-  if (gatewayEnabled()) return askGateway('openai', { prompt, system, web, maxTokens, model, deadline });
+export async function askOpenAI({ prompt, system, web = false, maxTokens = 4000, model, deadline, retries, maxRetries }) {
+  if (gatewayEnabled()) return askGateway('openai', { prompt, system, web, maxTokens, model, deadline, maxRetries });
   const key = needKey('OPENAI_API_KEY', 'ChatGPT');
   const url = baseUrl('OPENAI_BASE_URL', 'https://api.openai.com') + '/v1/responses';
   const t0 = Date.now();
@@ -166,7 +170,7 @@ export async function askOpenAI({ prompt, system, web = false, maxTokens = 4000,
     body.tool_choice = process.env.OPENAI_TOOL_CHOICE || 'auto';
     body.include = ['web_search_call.action.sources'];
   }
-  const r = await httpJSON(url, { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body, deadline });
+  const r = await httpJSON(url, { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body, deadline, retries });
   if (r.status !== 200 || !r.json) throw mapErr('ChatGPT', r);
   const p = parseOpenAI(r.json.output);
   const u = r.json.usage || {};
@@ -190,8 +194,8 @@ export function parseGemini(json) {
   return { text, sources, queries: (gm.webSearchQueries || []).map((q) => String(q).slice(0, 200)), finish: cand.finishReason };
 }
 
-export async function askGemini({ prompt, system, web = false, maxTokens = 4096, model, deadline }) {
-  if (gatewayEnabled()) return askGateway('gemini', { prompt, system, web, maxTokens, model, deadline });
+export async function askGemini({ prompt, system, web = false, maxTokens = 4096, model, deadline, retries, maxRetries }) {
+  if (gatewayEnabled()) return askGateway('gemini', { prompt, system, web, maxTokens, model, deadline, maxRetries });
   const key = needKey('GEMINI_API_KEY', 'Gemini');
   const url = `${baseUrl('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com')}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const t0 = Date.now();
@@ -204,6 +208,7 @@ export async function askGemini({ prompt, system, web = false, maxTokens = 4096,
       generationConfig: { maxOutputTokens: envInt('GEMINI_MAX_OUTPUT_TOKENS', maxTokens) },
     },
     deadline,
+    retries,
   });
   if (r.status !== 200 || !r.json) throw mapErr('Gemini', r);
   if (r.json.promptFeedback && r.json.promptFeedback.blockReason)

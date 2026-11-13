@@ -1,5 +1,6 @@
 import { gatewayEnabled } from './gateway.js';
 import { HttpError } from './util.js';
+import { configured } from './providers.js';
 
 // USD per million tokens / per thousand searches, checked against Gateway catalog.
 export const PRICING_DATE = '2026-11-13';
@@ -22,6 +23,14 @@ export const MODEL_OPTIONS = {
 export function modelOptions(defaults) {
   return Object.fromEntries(['claude', 'openai', 'gemini', 'judge'].map(role => {
     const engine = role === 'judge' ? 'claude' : role;
+    if (role === 'judge') {
+      const available = configured();
+      const options = ['claude','openai','gemini'].filter(e=>available[e]).flatMap(e=>gatewayEnabled()
+        ? MODEL_OPTIONS[e].map(x=>({...x,engine:e}))
+        : [{id:defaults[e],name:defaults[e],engine:e,input:null,output:null,search:null}]);
+      if(available.claude&&!options.some(x=>x.id===defaults.judge))options.push({id:defaults.judge,name:defaults.judge,engine:'claude',input:null,output:null,search:null});
+      return [role,options];
+    }
     const id = defaults[role];
     if (!gatewayEnabled()) return [role, [{ id, name: id, input: null, output: null, search: null }]];
     const options = MODEL_OPTIONS[engine].map(x => ({ ...x }));
