@@ -107,7 +107,7 @@ Số lượt gọi cho một audit đầy đủ, 3 AI, lặp 1 lần: **123 lư�
 ## 9. Giới hạn của phép đo
 
 - API không trả lời y như ứng dụng ChatGPT/Gemini/Claude (không có cá nhân hóa, bộ nhớ). Gemini trả nguồn dưới dạng liên kết chuyển hướng của Google, tên hiển thị là tên miền.
-- Vị trí tìm kiếm được đặt là Hà Nội, Việt Nam (đổi bằng `SEARCH_*`). Claude và ChatGPT nhận tham số vị trí; Gemini không có tham số tương đương.
+- Vị trí tìm kiếm mặc định là Hà Nội (`SEARCH_CITY`, `SEARCH_REGION`, `SEARCH_TIMEZONE`). OpenAI nhận thêm `SEARCH_COUNTRY=VN`. Claude không kế thừa mã quốc gia này: chỉ gửi city/region/timezone; nếu cần country thì đặt riêng `ANTHROPIC_SEARCH_COUNTRY` với mã được search provider hỗ trợ. Gemini không có tham số tương đương.
 - Câu trả lời thay đổi theo thời điểm: dùng tỷ lệ qua nhiều lượt, không dựa vào một câu trả lời.
 - Giám khảo chấm điểm là Claude, nên có thể thiên vị với câu trả lời của chính Claude. Xem lại các ô quan trọng bằng mắt trước khi gửi báo cáo cho khách.
 - Prompt hỏi mặc định chỉ yêu cầu “trả lời tiếng Việt, ngắn gọn” để gần với người dùng thật; đổi bằng biến `PROBE_SYSTEM`.
@@ -145,3 +145,11 @@ Mỗi AI chạy câu hỏi đầu tiên trong danh sách trước khi mở các 
 Nếu phản hồi API không theo cấu trúc JSON của ứng dụng (HTML/text, hoặc JSON khác định dạng), giao diện hiện HTTP status và mã `x-vercel-id` nếu có, thay vì chỉ `http_502`. Dùng mã này đối chiếu Vercel Logs. Không hiển thị HTML hoặc toàn bộ nội dung phản hồi bên ngoài.
 
 Để phân biệt lỗi công cụ tìm kiếm với lỗi model/runtime: chạy cùng câu hỏi và cùng model Claude với web tắt rồi bật. Nếu chỉ web bật thất bại, kiểm tra quyền native web search, provider được Gateway chọn và nội dung lỗi upstream; nếu cả hai thất bại, kiểm tra model/key/quyền và lỗi thực thi hàm. Không tự bỏ tìm kiếm web hoặc đổi model để giả lập một phép đo thành công. CSV chỉ có HTTP status không đủ xác định nguyên nhân upstream.
+
+### Claude qua Gateway và GPT-6 Luna
+
+Claude (hỏi, chấm và viết) dùng Anthropic Messages API tại `https://ai-gateway.vercel.sh/v1/messages` với `AI_GATEWAY_API_KEY`; không cần key Anthropic riêng. Giữ nguyên native web search, citations và nối lượt `pause_turn`, giới hạn chung 100 giây. Các phản hồi lỗi HTTP được chuyển qua bộ chẩn đoán Gateway hiện có. OpenAI và Gemini tiếp tục dùng AI SDK Gateway.
+
+Không tự gán `country=VN` cho Claude web search: Anthropic có thể trả HTTP 400 nếu search provider không hỗ trợ mã quốc gia. Vẫn giữ Hanoi/Asia/Ho_Chi_Minh, không đổi sang quốc gia khác. `ANTHROPIC_SEARCH_COUNTRY` là cấu hình riêng tùy chọn. Việc này xử lý rủi ro trong cấu hình gửi đi, chưa chứng minh nguyên nhân của 502 Production khi chưa có phản hồi thực tế. Tài liệu: https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool và https://vercel.com/docs/ai-gateway/sdks-and-apis/anthropic-messages-api/advanced.
+
+GPT-6 Luna (`openai/gpt-6-luna`) có trong bộ chọn OpenAI; dự toán dùng giá tham khảo $0.10/1M token vào, $0.50/1M token ra và $10/1.000 lượt tìm kiếm ở ngưỡng context thông thường, đối chiếu catalog Gateway ngày 13/11/2026. Model mặc định của máy chủ không thay đổi.

@@ -9,6 +9,7 @@ export const MODEL_OPTIONS = {
     { id: 'anthropic/claude-sonnet-5.5', name: 'Claude Sonnet 5.5', input: 2, output: 10, search: 10 },
   ],
   openai: [
+    { id: 'openai/gpt-6-luna', name: 'GPT-6 Luna · tiết kiệm', input: .1, output: .5, search: 10 },
     { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini · tiết kiệm', input: .25, output: 2, search: 10 },
     { id: 'openai/gpt-5.4-mini', name: 'GPT-5.4 Mini', input: .75, output: 4.5, search: 10 },
     { id: 'openai/gpt-6-astra', name: 'GPT-6 Astra', input: 10, output: 50, search: 10 },

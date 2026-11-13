@@ -33,11 +33,11 @@ const originalFetch = globalThis.fetch;
 let requests = 0;
 globalThis.fetch = async (url, init) => {
   requests++;
-  assert.equal(String(url), 'https://ai-gateway.vercel.sh/v4/ai/language-model');
+  assert.equal(String(url), 'https://ai-gateway.vercel.sh/v1/messages');
   assert.match(JSON.stringify(init.headers), /gateway-test-secret/);
   const body = JSON.parse(init.body);
-  assert.equal(body.prompt.at(-1).content[0].text, 'Judge via gateway');
-  return new Response(JSON.stringify({ content: [{ type: 'text', text: '[]' }], finishReason: { unified: 'stop', raw: 'stop' }, usage: { inputTokens: { total: 1 }, outputTokens: { total: 1 } }, warnings: [] }), { headers: { 'content-type': 'application/json' } });
+  assert.equal(body.messages.at(-1).content, 'Judge via gateway');
+  return new Response(JSON.stringify({ content: [{ type: 'text', text: '[]' }], stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } }), { headers: { 'content-type': 'application/json' } });
 };
 try {
   const r = await askClaude({ prompt: 'Judge via gateway', model: MODELS().judge });

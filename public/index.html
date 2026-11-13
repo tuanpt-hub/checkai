@@ -365,7 +365,7 @@ async function runProbe(groups){
     if(halted.has(t.e))return;
     for(let attempt=0;attempt<2&&!stopFlag&&!halted.has(t.e);attempt++){
       try{const r=await api("/api/probe",{method:"POST",body:{engine:ENGMAP[t.e],prompt:t.p.q,web,model:models[ENGMAP[t.e]]},signal:sig1});noteUsage(r);
-        (bag[t.p.id+"|"+t.e]=bag[t.p.id+"|"+t.e]||[]).push({p:t.p,e:t.e,text:r.text,sources:r.sources||[],queries:r.queries||[],model:r.model,truncated:r.truncated});failures[t.e]=0;return true}
+        (bag[t.p.id+"|"+t.e]=bag[t.p.id+"|"+t.e]||[]).push({p:t.p,e:t.e,text:r.text,sources:r.sources||[],queries:r.queries||[],model:r.model,searchLocation:r.searchLocation,truncated:r.truncated});failures[t.e]=0;return true}
       catch(err){
         if(err.code==="cancelled"||err.code==="unauthorized"){stopFlag=true;return}
         if(err.code==="daily_limit"){stopFlag=true;errs[t.e+"|daily_limit"]={n:1,msg:err.message};return}
@@ -406,7 +406,7 @@ async function runProbe(groups){
     const pick=runs.find(r=>r.v.code===best),src=new Map(),qs=new Set();
     runs.forEach(r=>{r.it.sources.forEach(s=>{if(s&&s.url&&!src.has(s.url))src.set(s.url,s)});r.it.queries.forEach(q=>qs.add(q))});
     const [id,e]=k.split("|");
-    (a.probe[id]=a.probe[id]||{})[e]={a:pick.it.text.slice(0,6000),code:best,acc:pick.v.acc,note:pick.v.note,confused:pick.v.confused,at:Date.now(),web,model:pick.it.model,judgeModel:ver.has(pick.it)?models.judge:null,sources:[...src.values()].slice(0,12),queries:[...qs].slice(0,8),runs:codes};saved++}
+    (a.probe[id]=a.probe[id]||{})[e]={a:pick.it.text.slice(0,6000),code:best,acc:pick.v.acc,note:pick.v.note,confused:pick.v.confused,at:Date.now(),web,model:pick.it.model,searchLocation:pick.it.searchLocation,judgeModel:ver.has(pick.it)?models.judge:null,sources:[...src.values()].slice(0,12),queries:[...qs].slice(0,8),runs:codes};saved++}
   touch();busy=null;
   flash.probeOk=`Đã lưu ${saved} kết quả (${engines.join(", ")}${web?", có tìm kiếm web":", không tìm kiếm web"}${reps>1?", lặp "+reps+" lần":""}).${judgeFail?" "+judgeFail+" lô chưa được Claude chấm.":""}`;
   flash.probe=errLines.slice(0,4).join(" · ");

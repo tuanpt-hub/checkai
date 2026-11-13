@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.js",
-    "test": "node test/e2e.mjs && node test/gateway.mjs && node test/gateway-errors.mjs && node test/probe-failures.mjs && node test/model-options.mjs && node test/model-api.mjs && node test/api-response.mjs",
+    "test": "node test/e2e.mjs && node test/gateway.mjs && node test/gateway-errors.mjs && node test/probe-failures.mjs && node test/model-options.mjs && node test/model-api.mjs && node test/api-response.mjs && node test/claude-messages.mjs",
     "dev:fake": "node test/dev-with-fakes.mjs"
   },
   "dependencies": {
