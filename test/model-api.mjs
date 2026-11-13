@@ -8,6 +8,7 @@ const nativeFetch=globalThis.fetch;let actualModel,calls=0;
 globalThis.fetch=async(url,init)=>{
  if(String(url).startsWith('https://ai-gateway.vercel.sh/')) {
   calls++;actualModel=new Headers(init.headers).get('ai-language-model-id')||JSON.parse(init.body).model;
+  if(String(url).endsWith('/v1/messages') && JSON.parse(init.body).messages[0].content==='Force truncated judge')return Response.json({content:[{type:'text',text:'['}],stop_reason:'max_tokens',usage:{output_tokens:2000}});
   if(String(url).endsWith('/v1/messages'))return Response.json({content:[{type:'text',text:'[]'}],stop_reason:'end_turn',usage:{input_tokens:1,output_tokens:1}});
   return new Response(JSON.stringify({content:[{type:'text',text:'[]'}],finishReason:{unified:'stop',raw:'stop'},usage:{inputTokens:{total:1},outputTokens:{total:1}},warnings:[]}),{headers:{'content-type':'application/json'}});
  }
@@ -23,6 +24,7 @@ try {
  const luna=await request('/api/probe',{engine:'openai',prompt:'Test Luna?',web:false,model:'openai/gpt-6-luna'});assert.equal(luna.status,200);assert.equal(actualModel,'openai/gpt-6-luna');
  const claude=await request('/api/probe',{engine:'claude',prompt:'Test Claude web?',web:true,model:'anthropic/claude-haiku-5.5'});assert.equal(claude.status,200);assert.equal(actualModel,'anthropic/claude-haiku-5.5');
  const judge=await request('/api/claude',{prompt:'Judge',json:true,model:'anthropic/claude-haiku-5.5'});assert.equal(judge.status,200);assert.equal(actualModel,'anthropic/claude-haiku-5.5');
- assert.equal((await request('/api/claude',{prompt:'Judge',model:'openai/gpt-5-mini'})).status,400);
+ const truncated=await request('/api/claude',{prompt:'Force truncated judge',json:true,model:'anthropic/claude-sonnet-5.5'});assert.equal(truncated.status,200);assert.equal(truncated.data.fallbackUsed,true);assert.equal(truncated.data.model,'openai/gpt-6-luna');
+ assert.equal((await request('/api/claude',{prompt:'Judge',model:'openai/gpt-5-mini'})).status,200);
  console.log('Model API: authenticated catalog, validation before quota, selected probe and judge reach SDK transport passed.');
 } finally {globalThis.fetch=nativeFetch;server.close();f.close();}

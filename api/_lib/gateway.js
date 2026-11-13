@@ -49,7 +49,7 @@ export function normalizeGateway(result) {
     usage: { in: u.inputTokens || 0, out: u.outputTokens || 0, searches: queries.size } };
 }
 
-export async function askGateway(engine, { prompt, system, web = false, maxTokens = 1500, model, deadline }, generate = generateText) {
+export async function askGateway(engine, { prompt, system, web = false, maxTokens = 1500, model, deadline, maxRetries = 1 }, generate = generateText) {
   if (!gatewayEnabled()) throw new HttpError(503, 'not_configured', 'Chưa cấu hình AI_GATEWAY_API_KEY.');
   const started = Date.now();
   const gateway = createGateway({ apiKey: process.env.AI_GATEWAY_API_KEY });
@@ -57,7 +57,7 @@ export async function askGateway(engine, { prompt, system, web = false, maxToken
   try {
     const result = await generate({
       model: gateway(modelId), prompt, ...(system ? { system } : {}),
-      maxOutputTokens: maxTokens, maxRetries: 1,
+      maxOutputTokens: maxTokens, maxRetries,
       abortSignal: AbortSignal.timeout(Math.max(1, (deadline || started + 100_000) - Date.now())),
       ...(web ? { tools: searchTools(engine), stopWhen: stepCountIs(3) } : {}),
       ...(engine === 'openai' ? { providerOptions: { openai: {

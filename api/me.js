@@ -15,6 +15,7 @@ export default route(async (req, res) => {
     used,
     limit: dailyLimit(),
     engines: configured(),
+    judgeAvailable: Object.values(configured()).some(Boolean),
     models: MODELS(),
     modelOptions: modelOptions(MODELS()),
     gateway: gatewayEnabled(),

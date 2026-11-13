@@ -7,7 +7,7 @@ const run=html.slice(html.indexOf('async function runProbe('),html.indexOf('func
 async function scenario(code,late=false) {
  const calls={Claude:0,Gemini:0},a={probe:{}};
  const context={
-  chosenModels:()=>({judge:'judge-test'}),A:()=>a,busy:null,stopFlag:false,flash:{},
+  clearAiNotice:()=>{},chosenModels:()=>({judge:'judge-test'}),A:()=>a,busy:null,stopFlag:false,flash:{},
   promptList:()=>Array.from({length:41},(_,i)=>({id:'B'+i,g:'B',q:'Test?'})),
   selEngines:()=>['Claude','Gemini'],runCfg:{reps:1,web:true},
   ENGMAP:{Claude:'Claude',Gemini:'Gemini'},newCtl:()=>undefined,
