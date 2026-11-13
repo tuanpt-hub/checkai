@@ -5,11 +5,18 @@
   "description": "NetSpace AI Brand Readiness Audit – bản nội bộ chạy trên Vercel",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "node scripts/dev.js",
-    "test": "node test/e2e.mjs",
+    "test": "node test/e2e.mjs && node test/gateway.mjs",
     "dev:fake": "node test/dev-with-fakes.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.104",
+    "@ai-sdk/gateway": "^4.0.145",
+    "@ai-sdk/google": "^4.0.120",
+    "@ai-sdk/openai": "^4.0.117",
+    "ai": "^7.0.172"
   }
 }

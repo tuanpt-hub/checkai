@@ -10,7 +10,7 @@ export default route(async (req, res) => {
   const b = await readJson(req, 300_000);
   const prompt = String(b.prompt || '');
   if (prompt.length < 3 || prompt.length > 120_000) throw new HttpError(400, 'bad_prompt', 'Nội dung quá ngắn hoặc quá dài.');
-  if (!configured().claude) throw new HttpError(503, 'not_configured', 'Chưa cấu hình ANTHROPIC_API_KEY.');
+  if (!configured().claude) throw new HttpError(503, 'not_configured', 'Chưa cấu hình AI_GATEWAY_API_KEY hoặc ANTHROPIC_API_KEY.');
   const maxTokens = Math.min(Math.max(parseInt(b.maxTokens, 10) || 2000, 200), 6000);
 
   const { used, limit } = await bump(user.email, 1);

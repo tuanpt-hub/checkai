@@ -8,7 +8,7 @@ Trình duyệt ──(cookie HttpOnly)──► Vercel (api/*.js) ──► Anth
                                         └──► Supabase (đăng nhập, bảng audits, bảng usage)
 ```
 
-Khóa API và khóa bí mật Supabase **chỉ nằm ở biến môi trường của Vercel**, không bao giờ xuống trình duyệt. Không có phụ thuộc npm nào (không cần `npm install`).
+Key Gateway, khóa API và khóa bí mật Supabase **chỉ nằm ở biến môi trường của Vercel**, không bao giờ xuống trình duyệt. Gọi AI qua **Vercel AI Gateway** bằng một key `AI_GATEWAY_API_KEY`. Dùng Node.js 22 trở lên. Chạy `npm ci` để cài AI SDK và các định nghĩa công cụ tìm kiếm web.
 
 ---
 
@@ -20,15 +20,24 @@ Khóa API và khóa bí mật Supabase **chỉ nằm ở biến môi trường c
 4. **Authentication → Users → Add user (hoặc Invite)**: tạo tài khoản cho từng người trong đội (email `@netspace.vn`, đặt mật khẩu mạnh, chọn *Auto Confirm*).
 5. **Project Settings → API Keys**, lấy 3 giá trị: `Project URL`, **Publishable key** (`sb_publishable_...`) và **Secret key** (`sb_secret_...`). Dự án cũ chỉ có khóa kiểu cũ thì dùng `anon` và `service_role`; mã hỗ trợ cả hai.
 
-## 2. Lấy khóa API của 3 AI
+## 2. Cấu hình Vercel AI Gateway
 
-| AI | Nơi lấy khóa | Lưu ý |
-|---|---|---|
-| Claude | platform.claude.com → API keys | Quản trị viên tổ chức phải **bật Web search** trong Console (Settings → Capabilities). Nếu chưa bật, bỏ tick “Bật tìm kiếm web” trong app hoặc bật lại ở Console. |
-| ChatGPT | platform.openai.com → API keys | Dùng Responses API + công cụ `web_search`. |
-| Gemini | aistudio.google.com → Get API key | Dùng `google_search` (Grounding with Google Search). |
+Tạo key tại Vercel → AI Gateway → API Keys, rồi thêm biến **`AI_GATEWAY_API_KEY`** vào môi trường Production của project và Redeploy. Chỉ cần key Gateway; không cần ba key nhà cung cấp riêng. Tài khoản Gateway cần có credit và quyền truy cập model.
 
-**Hãy đặt giới hạn chi tiêu hằng tháng (spend limit / budget alert) ở cả ba nhà cung cấp.** Đây là lớp bảo vệ độc lập với hạn mức của app.
+Khi biến này có giá trị, toàn bộ câu hỏi, chấm điểm, phân tích và viết báo cáo đều đi qua Gateway. Nếu đồng thời còn key cũ, ứng dụng vẫn ưu tiên Gateway; lỗi Gateway không tự chuyển sang key cũ.
+
+| Biến tùy chọn | Mặc định |
+|---|---|
+| `AI_GATEWAY_CLAUDE_MODEL` | `anthropic/claude-sonnet-5.5` |
+| `AI_GATEWAY_JUDGE_MODEL` | `anthropic/claude-sonnet-5.5` |
+| `AI_GATEWAY_OPENAI_MODEL` | `openai/gpt-6-astra` |
+| `AI_GATEWAY_GEMINI_MODEL` | `google/gemini-3.6-flash` |
+
+Tên model phải có tiền tố hãng và khớp danh sách AI Gateway. Các biến `ANTHROPIC_*_MODEL`, `OPENAI_MODEL`, `GEMINI_MODEL` cũ chỉ áp dụng khi không có key Gateway. Tìm kiếm web vẫn dùng native tools của Anthropic, OpenAI và Google; không thay bằng một công cụ tìm kiếm chung.
+
+Nếu không cấu hình `AI_GATEWAY_API_KEY`, ứng dụng tiếp tục hỗ trợ ba key riêng `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` như trước. Đặt hạn mức chi tiêu ở Gateway hoặc nhà cung cấp đang sử dụng.
+
+Tài liệu: [Gateway web search](https://vercel.com/docs/ai-gateway/models-and-providers/web-search), [AI SDK Gateway](https://ai-sdk.dev/providers/ai-sdk-providers/ai-gateway).
 
 ## 3. Triển khai lên Vercel
 
@@ -42,7 +51,7 @@ Khóa API và khóa bí mật Supabase **chỉ nằm ở biến môi trường c
 | `SUPABASE_SECRET_KEY` | khóa bí mật (đánh dấu **Sensitive**) |
 | `ALLOWED_EMAIL_DOMAINS` | `netspace.vn` |
 | `ALLOWED_EMAILS` | (tuỳ chọn) email lẻ ngoài domain, cách nhau dấu phẩy |
-| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` | khóa của từng hãng (thiếu khóa nào thì AI đó bị vô hiệu trong giao diện) |
+| `AI_GATEWAY_API_KEY` | Key Vercel AI Gateway (đánh dấu **Sensitive**); kích hoạt cả ba AI |
 | `DAILY_CALL_LIMIT` | mặc định 1500 lượt gọi AI/người/ngày (giờ Việt Nam) |
 
    Biến chọn model (mặc định đã đặt theo tài liệu hãng tại 13/11/2026, đổi được mà không cần sửa mã): `ANTHROPIC_PROBE_MODEL`, `ANTHROPIC_JUDGE_MODEL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, `GEMINI_MODEL`.
@@ -98,9 +107,10 @@ Số lượt gọi cho một audit đầy đủ, 3 AI, lặp 1 lần: **123 lư�
 ## 10. Chạy thử trên máy
 
 ```bash
+npm ci
 npm run dev:fake   # giao diện với dữ liệu giả lập, không cần khóa. http://localhost:3100
                    # đăng nhập: staff@netspace.vn / Mat-khau-1
-npm test           # 17 kiểm tra API với máy chủ giả lập
+npm test           # kiểm tra API giả lập + cấu hình, công cụ và HTTP transport của Gateway
 cp .env.example .env   # điền khóa thật, rồi:
 npm run dev        # http://localhost:3000, dùng Supabase và AI thật
 ```
@@ -114,6 +124,7 @@ api/probe.js             hỏi 1 câu tới 1 AI (claude | openai | gemini)
 api/claude.js            Claude chấm điểm và viết nội dung
 api/audits/              lưu, đọc, xóa audit (có kiểm tra phiên bản)
 api/_lib/                xác thực, Supabase, nhà cung cấp AI, hạn mức
+api/_lib/gateway.js      AI SDK, một key Gateway, native web search
 supabase/schema.sql      bảng và hàm
 seed/netspace-pilot.json audit mẫu NetSpace
 test/                    máy chủ giả lập và kiểm thử
