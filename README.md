@@ -82,6 +82,14 @@ Mã được kiểm thử với máy chủ giả lập, **chưa gọi thử API 
 - Perplexity và Copilot vẫn làm tay: dán câu trả lời ở ô **Dán câu trả lời từ AI khác**.
 - **Xuất báo cáo** (.md) và **dữ liệu audit** (.json) ở bước *Kết quả*. Nút **Nhập** nạp lại file .json.
 
+### Chọn model và dự toán trước khi chạy
+
+Ở bước **Hỏi AI**, chọn riêng model Claude, OpenAI, Gemini và Claude dùng để chấm/viết nội dung. Lựa chọn được lưu theo audit; model mặc định vẫn lấy từ biến môi trường. Chỉ Gateway hỗ trợ đổi model trong giao diện; chế độ key trực tiếp giữ cấu hình máy chủ. Máy chủ kiểm tra model theo danh sách của từng hãng trước khi cộng hạn mức hoặc gọi AI.
+
+Bảng dự toán và nút chạy hiển thị khoảng chi phí USD cho từng nhóm hoặc toàn bộ câu hỏi, cập nhật theo model, AI được chọn, số lần lặp và tìm kiếm web. Dự toán gồm hỏi + chấm Claude theo nhóm/lô tối đa 8 câu, dùng giá tham khảo trong `api/_lib/model-options.js` (ngày kiểm tra hiển thị trên giao diện). Đây không phải giá trực tiếp hay trần chi tiêu: số token, suy luận, truy vấn tìm kiếm, retry, cache và phụ phí thực tế có thể làm chi phí nằm ngoài khoảng. Model tùy chỉnh chưa có giá sẽ hiện “Chưa đủ giá để ước tính”, không tính bằng 0.
+
+Kết quả lưu tên model thực tế và model giám khảo nếu chấm thành công; đổi lựa chọn chỉ áp dụng cho các yêu cầu tiếp theo. Cần cập nhật bảng giá khi nhà cung cấp thay đổi giá. Ước tính áp dụng cho lần bấm Hỏi AI; các thao tác viết/phân tích riêng không nằm trong dự toán này.
+
 ## 7. Bảo mật
 
 - Mọi API (`/api/*`) đòi cookie phiên hợp lệ; chưa đăng nhập thì **không gọi được AI** (đã kiểm thử).

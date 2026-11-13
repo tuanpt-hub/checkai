@@ -6,7 +6,7 @@ const pool = html.slice(html.indexOf('async function pool('), html.indexOf('func
 const run = html.slice(html.indexOf('async function runProbe('), html.indexOf('function engineStats('));
 const calls = { Claude: 0, Gemini: 0 };
 const context = {
-  A: () => ({}), busy: null, stopFlag: false, flash: {},
+  chosenModels: () => ({}), A: () => ({}), busy: null, stopFlag: false, flash: {},
   promptList: () => Array.from({length:41}, (_,i) => ({id:'B'+i,g:'B',q:'Test?'})),
   selEngines: () => ['Claude','Gemini'], runCfg: {reps:1,web:true},
   ENGMAP: {Claude:'Claude',Gemini:'Gemini'}, newCtl: () => undefined,
