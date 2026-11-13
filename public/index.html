@@ -359,19 +359,21 @@ async function runProbe(groups){
   for(const p of pl)for(const e of engines)for(let r=0;r<reps;r++)tasks.push({p,e,r});
   flash.probe="";flash.probeOk="";stopFlag=false;const sig1=newCtl();
   busy={k:"probe",msg:"Đang hỏi AI…",pct:0};render();
-  const bag={},errs={};let done=0;
+  const bag={},errs={},halted=new Set();let done=0;
   const upd=()=>progress(`Đã hỏi ${done}/${tasks.length} lượt${stopFlag?" · đang dừng…":""}`,Math.round(done/tasks.length*70));
   const runTask=async t=>{
-    for(let attempt=0;attempt<2&&!stopFlag;attempt++){
+    if(halted.has(t.e))return;
+    for(let attempt=0;attempt<2&&!stopFlag&&!halted.has(t.e);attempt++){
       try{const r=await api("/api/probe",{method:"POST",body:{engine:ENGMAP[t.e],prompt:t.p.q,web},signal:sig1});noteUsage(r);
         (bag[t.p.id+"|"+t.e]=bag[t.p.id+"|"+t.e]||[]).push({p:t.p,e:t.e,text:r.text,sources:r.sources||[],queries:r.queries||[],model:r.model,truncated:r.truncated});return}
       catch(err){
         if(err.code==="cancelled"||err.code==="unauthorized"){stopFlag=true;return}
         if(err.code==="daily_limit"){stopFlag=true;errs[t.e+"|daily_limit"]={n:1,msg:err.message};return}
+        if(["auth_failed","insufficient_credit","model_not_found","bad_request","not_configured","provider_unavailable"].includes(err.code))halted.add(t.e);
         if(err.code==="rate_limited"&&attempt===0){await new Promise(r=>setTimeout(r,4000));continue}
         const k=t.e+"|"+(err.code||"error");errs[k]=errs[k]||{n:0,msg:err.message||err.code};errs[k].n++;return}}};
   try{await Promise.all(engines.map(e=>pool(tasks.filter(t=>t.e===e),3,async t=>{await runTask(t);done++;upd()})))}catch(e){}
-  const errLines=Object.keys(errs).map(k=>`${errs[k].msg}${errs[k].n>1?" (×"+errs[k].n+")":""}`);
+  const errLines=Object.keys(errs).map(k=>`${k.split("|")[0]}: ${errs[k].msg}${errs[k].n>1?" (×"+errs[k].n+")":""}`);
   const items=[];for(const k in bag)bag[k].forEach((x,i)=>{x.run=i;x.m=mentioned(a,x.text);items.push(x)});
   if(!items.length){busy=null;flash.probe=errLines.slice(0,4).join(" · ")||"Chưa có câu trả lời nào.";return render()}
   // ---- chấm điểm bằng Claude ----

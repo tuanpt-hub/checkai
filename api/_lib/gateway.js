@@ -4,6 +4,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
 import { HttpError, envInt } from './util.js';
+import { gatewayFailure } from './gateway-errors.js';
 
 export const gatewayEnabled = () => !!process.env.AI_GATEWAY_API_KEY;
 export const gatewayModels = () => ({
@@ -73,12 +74,6 @@ export async function askGateway(engine, { prompt, system, web = false, maxToken
     return { engine, model: modelId, ms: Date.now() - started, ...out };
   } catch (e) {
     if (e instanceof HttpError) throw e;
-    const status = e.statusCode || e.cause?.statusCode;
-    if (status === 401 || status === 403) throw new HttpError(502, 'auth_failed', 'AI Gateway: key không hợp lệ hoặc chưa được cấp quyền.');
-    if (status === 402) throw new HttpError(502, 'insufficient_credit', 'AI Gateway: không đủ số dư. Kiểm tra credit trên Vercel.');
-    if (status === 429) throw new HttpError(502, 'rate_limited', 'AI Gateway: vượt giới hạn tốc độ hoặc hạn mức.');
-    if (status === 404) throw new HttpError(502, 'model_not_found', 'AI Gateway: không tìm thấy model. Kiểm tra biến AI_GATEWAY_*_MODEL.');
-    if (e.name === 'TimeoutError' || e.name === 'AbortError') throw new HttpError(504, 'timeout', 'AI Gateway: hết thời gian chờ.');
-    throw new HttpError(502, 'provider_error', 'AI Gateway: không hoàn tất được yêu cầu. Kiểm tra model và nhật ký Gateway trên Vercel.');
+    throw gatewayFailure(e, { engine, model: modelId, prompt, system });
   }
 }
