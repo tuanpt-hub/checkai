@@ -137,3 +137,11 @@ supabase/schema.sql      bảng và hàm
 seed/netspace-pilot.json audit mẫu NetSpace
 test/                    máy chủ giả lập và kiểm thử
 ```
+
+## Chẩn đoán lỗi HTTP 502 khi Hỏi AI
+
+Mỗi AI chạy câu hỏi đầu tiên trong danh sách trước khi mở các lượt gọi song song. Nếu câu này lỗi, dừng riêng AI đó; câu hỏi kiểm tra được dùng luôn làm kết quả nên không tạo thêm lượt trả phí. Các AI còn lại tiếp tục. Nếu sau đó xuất hiện nhiều lỗi liên tiếp, dừng các câu chưa gửi của AI đang lỗi.
+
+Nếu phản hồi API không theo cấu trúc JSON của ứng dụng (HTML/text, hoặc JSON khác định dạng), giao diện hiện HTTP status và mã `x-vercel-id` nếu có, thay vì chỉ `http_502`. Dùng mã này đối chiếu Vercel Logs. Không hiển thị HTML hoặc toàn bộ nội dung phản hồi bên ngoài.
+
+Để phân biệt lỗi công cụ tìm kiếm với lỗi model/runtime: chạy cùng câu hỏi và cùng model Claude với web tắt rồi bật. Nếu chỉ web bật thất bại, kiểm tra quyền native web search, provider được Gateway chọn và nội dung lỗi upstream; nếu cả hai thất bại, kiểm tra model/key/quyền và lỗi thực thi hàm. Không tự bỏ tìm kiếm web hoặc đổi model để giả lập một phép đo thành công. CSV chỉ có HTTP status không đủ xác định nguyên nhân upstream.
