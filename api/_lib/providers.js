@@ -2,6 +2,7 @@ import { HttpError, httpJSON, envInt } from './util.js';
 import { gatewayEnabled, gatewayModels, askGateway } from './gateway.js';
 import { gatewayFailure } from './gateway-errors.js';
 import { searchLocation } from './search-location.js';
+import { claudeThinking, claudeOutputError } from './claude-output.js';
 
 /* ---------- cấu hình ---------- */
 export const MODELS = () => gatewayEnabled() ? gatewayModels() : ({
@@ -82,13 +83,13 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
     user_location: searchLocation('claude'),
   };
   let messages = [{ role: 'user', content: prompt }];
-  let all = [];
+  let all = [], lastMessage = null;
   let usage = { in: 0, out: 0, searches: 0 };
   for (let loop = 0; loop < 3; loop++) {
     if (Date.now() >= deadline) throw new HttpError(504, 'timeout', 'Claude: hết thời gian chờ.');
     const r = await httpJSON(url, {
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: { model, max_tokens: maxTokens, messages, ...(system ? { system } : {}), ...(web ? { tools: [tool] } : {}) },
+      body: { model, max_tokens: maxTokens, ...claudeThinking(model, web), messages, ...(system ? { system } : {}), ...(web ? { tools: [tool] } : {}) },
       deadline,
       timeoutMs: Math.max(1, Math.min(90000, (deadline || Date.now() + 90000) - Date.now())),
       retries: viaGateway ? 0 : 2,
@@ -99,8 +100,9 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
       }), { engine: 'claude', model, prompt, system });
       throw mapErr('Claude', r);
     }
-    const j = r.json;
-    all = all.concat(j.content || []);
+    const j = r.json;lastMessage = j;
+    if (!Array.isArray(j.content) || j.content.some(b => !b || typeof b !== 'object' || Array.isArray(b))) throw claudeOutputError(j, [], model, 'invalid_provider_response');
+    all = all.concat(j.content);
     usage.in += j.usage?.input_tokens || 0;
     usage.out += j.usage?.output_tokens || 0;
     usage.searches += j.usage?.server_tool_use?.web_search_requests || 0;
@@ -109,6 +111,7 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
       continue;
     }
     const p = parseAnthropic(all);
+    if (!p.text) throw claudeOutputError(j, all, model);
     return finish('claude', model, t0, {
       text: p.text,
       sources: [...p.sources.values()],
@@ -119,6 +122,7 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
     });
   }
   const p = parseAnthropic(all);
+  if (!p.text) throw claudeOutputError(lastMessage, all, model);
   return finish('claude', model, t0, { text: p.text, sources: [...p.sources.values()], queries: p.queries, truncated: true, usage, ...(web ? { searchLocation: searchLocation('claude') } : {}) });
 }
 
