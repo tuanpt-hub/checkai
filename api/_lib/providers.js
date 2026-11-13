@@ -1,16 +1,17 @@
 import { HttpError, httpJSON, envInt } from './util.js';
+import { gatewayEnabled, gatewayModels, askGateway } from './gateway.js';
 
 /* ---------- cấu hình ---------- */
-export const MODELS = () => ({
+export const MODELS = () => gatewayEnabled() ? gatewayModels() : ({
   claude: process.env.ANTHROPIC_PROBE_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
   judge: process.env.ANTHROPIC_JUDGE_MODEL || process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
   openai: process.env.OPENAI_MODEL || 'gpt-6-astra',
   gemini: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
 });
 export const configured = () => ({
-  claude: !!process.env.ANTHROPIC_API_KEY,
-  openai: !!process.env.OPENAI_API_KEY,
-  gemini: !!process.env.GEMINI_API_KEY,
+  claude: gatewayEnabled() || !!process.env.ANTHROPIC_API_KEY,
+  openai: gatewayEnabled() || !!process.env.OPENAI_API_KEY,
+  gemini: gatewayEnabled() || !!process.env.GEMINI_API_KEY,
 });
 
 const baseUrl = (envName, def) => (process.env[envName] || def).replace(/\/$/, '');
@@ -65,6 +66,7 @@ export function parseAnthropic(blocks, sources = new Map(), queries = []) {
 }
 
 export async function askClaude({ prompt, system, web = false, maxTokens = 1500, model, deadline }) {
+  if (gatewayEnabled()) return askGateway('claude', { prompt, system, web, maxTokens, model, deadline });
   const key = needKey('ANTHROPIC_API_KEY', 'Claude');
   const url = baseUrl('ANTHROPIC_BASE_URL', 'https://api.anthropic.com') + '/v1/messages';
   const t0 = Date.now();
@@ -132,6 +134,7 @@ export function parseOpenAI(output) {
 }
 
 export async function askOpenAI({ prompt, system, web = false, maxTokens = 4000, model, deadline }) {
+  if (gatewayEnabled()) return askGateway('openai', { prompt, system, web, maxTokens, model, deadline });
   const key = needKey('OPENAI_API_KEY', 'ChatGPT');
   const url = baseUrl('OPENAI_BASE_URL', 'https://api.openai.com') + '/v1/responses';
   const t0 = Date.now();
@@ -174,6 +177,7 @@ export function parseGemini(json) {
 }
 
 export async function askGemini({ prompt, system, web = false, maxTokens = 4096, model, deadline }) {
+  if (gatewayEnabled()) return askGateway('gemini', { prompt, system, web, maxTokens, model, deadline });
   const key = needKey('GEMINI_API_KEY', 'Gemini');
   const url = `${baseUrl('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com')}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const t0 = Date.now();
