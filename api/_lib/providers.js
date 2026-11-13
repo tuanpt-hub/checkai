@@ -1,5 +1,7 @@
 import { HttpError, httpJSON, envInt } from './util.js';
 import { gatewayEnabled, gatewayModels, askGateway } from './gateway.js';
+import { gatewayFailure } from './gateway-errors.js';
+import { searchLocation } from './search-location.js';
 
 /* ---------- cấu hình ---------- */
 export const MODELS = () => gatewayEnabled() ? gatewayModels() : ({
@@ -66,26 +68,37 @@ export function parseAnthropic(blocks, sources = new Map(), queries = []) {
 }
 
 export async function askClaude({ prompt, system, web = false, maxTokens = 1500, model, deadline }) {
-  if (gatewayEnabled()) return askGateway('claude', { prompt, system, web, maxTokens, model, deadline });
-  const key = needKey('ANTHROPIC_API_KEY', 'Claude');
-  const url = baseUrl('ANTHROPIC_BASE_URL', 'https://api.anthropic.com') + '/v1/messages';
+  const viaGateway = gatewayEnabled();
+  const key = needKey(viaGateway ? 'AI_GATEWAY_API_KEY' : 'ANTHROPIC_API_KEY', 'Claude');
+  // Native Messages preserves Anthropic search blocks, citations and pause_turn.
+  const url = (viaGateway ? 'https://ai-gateway.vercel.sh' : baseUrl('ANTHROPIC_BASE_URL', 'https://api.anthropic.com')) + '/v1/messages';
+  model = model || MODELS().claude;
   const t0 = Date.now();
+  deadline = deadline || t0 + 100_000;
   const tool = {
     type: process.env.ANTHROPIC_WEB_SEARCH_TOOL || 'web_search_20250305',
     name: 'web_search',
     max_uses: envInt('WEB_SEARCH_MAX_USES', 3),
-    user_location: { type: 'approximate', ...loc() },
+    user_location: searchLocation('claude'),
   };
   let messages = [{ role: 'user', content: prompt }];
   let all = [];
   let usage = { in: 0, out: 0, searches: 0 };
   for (let loop = 0; loop < 3; loop++) {
+    if (Date.now() >= deadline) throw new HttpError(504, 'timeout', 'Claude: hết thời gian chờ.');
     const r = await httpJSON(url, {
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
       body: { model, max_tokens: maxTokens, messages, ...(system ? { system } : {}), ...(web ? { tools: [tool] } : {}) },
       deadline,
+      timeoutMs: Math.max(1, Math.min(90000, (deadline || Date.now() + 90000) - Date.now())),
+      retries: viaGateway ? 0 : 2,
     });
-    if (r.status !== 200 || !r.json) throw mapErr('Claude', r);
+    if (r.status !== 200 || !r.json) {
+      if (viaGateway) throw gatewayFailure(Object.assign(new Error(r.json?.error?.message || r.json?.message || 'Gateway Messages request failed'), {
+        statusCode: r.status, type: r.json?.error?.type, generationId: r.json?.generationId,
+      }), { engine: 'claude', model, prompt, system });
+      throw mapErr('Claude', r);
+    }
     const j = r.json;
     all = all.concat(j.content || []);
     usage.in += j.usage?.input_tokens || 0;
@@ -102,10 +115,11 @@ export async function askClaude({ prompt, system, web = false, maxTokens = 1500,
       queries: p.queries,
       truncated: j.stop_reason === 'max_tokens',
       usage,
+      ...(web ? { searchLocation: searchLocation('claude') } : {}),
     });
   }
   const p = parseAnthropic(all);
-  return finish('claude', model, t0, { text: p.text, sources: [...p.sources.values()], queries: p.queries, truncated: true, usage });
+  return finish('claude', model, t0, { text: p.text, sources: [...p.sources.values()], queries: p.queries, truncated: true, usage, ...(web ? { searchLocation: searchLocation('claude') } : {}) });
 }
 
 /* ---------- ChatGPT (OpenAI Responses API) ---------- */

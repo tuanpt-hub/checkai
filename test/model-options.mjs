@@ -9,6 +9,8 @@ assert.throws(()=>selectedModel('openai','anthropic/claude-haiku-5.5',defaults),
 assert.throws(()=>selectedModel('judge','openai/gpt-5-mini',defaults),e=>e.code==='bad_model');
 assert.throws(()=>selectedModel('claude',{},defaults),e=>e.code==='bad_model');
 assert.equal(selectedModel('judge',undefined,defaults),defaults.judge);
+assert.equal(selectedModel('openai','openai/gpt-6-luna',defaults),'openai/gpt-6-luna');
+const luna=options.openai.find(x=>x.id==='openai/gpt-6-luna');assert.equal(luna.input,.1);assert.equal(luna.output,.5);assert.equal(luna.search,10);
 const models={claude:options.claude[0].id,openai:options.openai[0].id,gemini:options.gemini[0].id,judge:options.judge[0].id};
 const config={groups:[{id:'B',count:6},{id:'C',count:5},{id:'T',count:10},{id:'S',count:20}],engines:['claude','openai','gemini'],reps:1,web:true,models,options};
 const estimate=CheckAICost.estimate;

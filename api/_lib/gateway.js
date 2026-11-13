@@ -5,6 +5,7 @@ import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
 import { HttpError, envInt } from './util.js';
 import { gatewayFailure } from './gateway-errors.js';
+import { searchLocation } from './search-location.js';
 
 export const gatewayEnabled = () => !!process.env.AI_GATEWAY_API_KEY;
 export const gatewayModels = () => ({
@@ -15,16 +16,10 @@ export const gatewayModels = () => ({
 });
 
 export function searchTools(engine) {
-  const location = {
-    country: process.env.SEARCH_COUNTRY || 'VN',
-    city: process.env.SEARCH_CITY || 'Hanoi',
-    region: process.env.SEARCH_REGION || 'Hanoi',
-    timezone: process.env.SEARCH_TIMEZONE || 'Asia/Ho_Chi_Minh',
-  };
   if (engine === 'claude') return { web_search: anthropic.tools.webSearch_20250305({
-    maxUses: envInt('WEB_SEARCH_MAX_USES', 3), userLocation: { type: 'approximate', ...location },
+    maxUses: envInt('WEB_SEARCH_MAX_USES', 3), userLocation: searchLocation(engine),
   }) };
-  if (engine === 'openai') return { web_search: openai.tools.webSearch({ userLocation: { type: 'approximate', ...location } }) };
+  if (engine === 'openai') return { web_search: openai.tools.webSearch({ userLocation: searchLocation(engine) }) };
   if (engine === 'gemini') return { google_search: google.tools.googleSearch({}) };
   throw new HttpError(400, 'bad_engine', 'AI không được hỗ trợ.');
 }
