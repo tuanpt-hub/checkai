@@ -14,9 +14,10 @@
       low += n * (((web ? 3000 : 300) * p.input + 800 * p.output) / 1e6 + (web ? p.search / 1000 : 0));
       high += n * (((web ? 18000 : 1500) * p.input + 3000 * p.output) / 1e6 + (web ? 3 * p.search / 1000 : 0));
     }
-    // Current judge batches are per group, engine, repetition, max 8 answers each.
+    // Judge batches are per group, engine, repetition, max 8 answers each.
     const judgeCalls = groups.reduce((n, g) => n + Math.ceil(g.count / 8), 0) * engines.length * reps;
-    const judgeLowCalls = groups.filter(g=>g.id==='B').reduce((n,g)=>n+Math.ceil(g.count/8),0)*engines.length*reps;
+    // Mọi câu trả lời đều được chấm (để trích danh sách thương hiệu cho share of voice).
+    const judgeLowCalls = judgeCalls;
     const p = price('judge');
     if (!p || ![p.input,p.output].every(Number.isFinite)) missing.push('judge');
     else { low += judgeLowCalls * (4000*p.input+800*p.output)/1e6; high += judgeCalls*(18000*p.input+2500*p.output)/1e6; }
