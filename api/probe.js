@@ -1,10 +1,13 @@
 import { selectedModel } from './_lib/model-options.js';
-import { route, ok, allowMethods, readJson, HttpError } from './_lib/util.js';
+import { route, ok, allowMethods, readJson, HttpError, envInt } from './_lib/util.js';
 import { requireUser } from './_lib/auth.js';
 import { ask, configured, PROBE_SYSTEM, MODELS } from './_lib/providers.js';
 import { bump } from './_lib/usage.js';
 
 const ENGINES = ['claude', 'openai', 'gemini'];
+// Trần token đầu ra mỗi lượt hỏi. OpenAI và Gemini tính cả token suy luận vào mức này,
+// nên cần rộng hơn Claude (Claude giữ 1500 để không tăng chi phí). Đổi bằng PROBE_MAX_TOKENS_<ENGINE>.
+const PROBE_MAX_TOKENS = { claude: 1500, openai: 4000, gemini: 4096 };
 
 /** Hỏi MỘT câu hỏi tới MỘT AI (cuộc trò chuyện mới, không lịch sử). */
 export default route(async (req, res) => {
@@ -21,6 +24,7 @@ export default route(async (req, res) => {
   const model = selectedModel(engine, b.model, MODELS());
   const { used, limit } = await bump(user.email, 1);
   const deadline = Date.now() + 100_000;
-  const r = await ask(engine, { prompt, system: PROBE_SYSTEM, web, maxTokens: 1500, model, deadline });
+  const maxTokens = envInt(`PROBE_MAX_TOKENS_${engine.toUpperCase()}`, PROBE_MAX_TOKENS[engine]);
+  const r = await ask(engine, { prompt, system: PROBE_SYSTEM, web, maxTokens, model, deadline });
   ok(res, { ...r, text: r.text.slice(0, 8000), sources: r.sources.slice(0, 20), queries: r.queries.slice(0, 10), used, limit });
 });
