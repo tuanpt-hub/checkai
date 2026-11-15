@@ -53,6 +53,7 @@ Tài liệu: [Gateway web search](https://vercel.com/docs/ai-gateway/models-and-
 | `ALLOWED_EMAILS` | (tuỳ chọn) email lẻ ngoài domain, cách nhau dấu phẩy |
 | `AI_GATEWAY_API_KEY` | Key Vercel AI Gateway (đánh dấu **Sensitive**); kích hoạt cả ba AI |
 | `DAILY_CALL_LIMIT` | mặc định 1500 lượt gọi AI/người/ngày (giờ Việt Nam) |
+| `PROBE_MAX_TOKENS_CLAUDE` / `_OPENAI` / `_GEMINI` | (tuỳ chọn) trần token đầu ra mỗi lượt hỏi; mặc định 1500 / 4000 / 4096. OpenAI và Gemini tính cả token suy luận vào mức này nên cần rộng hơn Claude. Câu trả lời vẫn bị cắt sẽ được đánh dấu ⚠ trong bảng kết quả |
 
    Biến chọn model (mặc định đã đặt theo tài liệu hãng tại 13/11/2026, đổi được mà không cần sửa mã): `ANTHROPIC_PROBE_MODEL`, `ANTHROPIC_JUDGE_MODEL`, `OPENAI_MODEL`, `OPENAI_REASONING_EFFORT`, `GEMINI_MODEL`.
 3. **Redeploy** sau khi đổi biến môi trường.
@@ -119,6 +120,7 @@ npm ci
 npm run dev:fake   # giao diện với dữ liệu giả lập, không cần khóa. http://localhost:3100
                    # đăng nhập: staff@netspace.vn / Mat-khau-1
 npm test           # kiểm tra API giả lập + cấu hình, công cụ và HTTP transport của Gateway
+python3 test/ui-regression.py   # kiểm thử giao diện trên trình duyệt thật (cần `npm run dev:fake` đang chạy, pip install playwright)
 cp .env.example .env   # điền khóa thật, rồi:
 npm run dev        # http://localhost:3000, dùng Supabase và AI thật
 ```
