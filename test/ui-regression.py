@@ -42,7 +42,8 @@ async def main():
         check("đổi audit bằng mọi cách vẫn bị chặn (cur giữ nguyên)", await pg.evaluate("id=>cur===id", id1))
         await pg.wait_for_function("!busy", timeout=40000); await saved(pg)
         srv = await server_audit(pg, id1)
-        check("6 kết quả được lưu lên máy chủ đúng audit", len(srv['audit'].get('probe', {})) == 6, len(srv['audit'].get('probe', {})))
+        nb = len([k for k in srv['audit'].get('probe', {}) if k.startswith('B')])
+        check("6 kết quả nhóm B được lưu lên máy chủ đúng audit", nb == 6, nb)
         check("sau khi xong, các nút được mở khóa", await pg.evaluate("['auditSel','newAudit','impBtn'].every(i=>!document.getElementById(i).disabled)"))
         await pg.unroute('**/api/probe')
 

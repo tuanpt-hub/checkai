@@ -13,9 +13,51 @@ function answerFor(prompt) {
   return mention ? `NetSpace là công ty công nghệ và truyền thông tại Việt Nam, vận hành mạng lưới kênh và KOL. (trả lời giả lập)` : `Có nhiều đơn vị như Dinos, UpBase và Melive. (trả lời giả lập)`;
 }
 function judgeJSON(prompt) {
-  const ids = [...prompt.matchAll(/\[([BCTS]\d+)\]/g)].map((m) => m[1]);
+  const ids = [...prompt.matchAll(/\[([BCTS]\d+(?:\.\d+)?)\]/g)].map((m) => m[1]);
   const isB = prompt.includes('"knows"');
-  return JSON.stringify(ids.map((id) => (isB ? { id, knows: true, code: 2, accuracy: 3, confused_with: '', note: 'Mô tả đúng cơ bản' } : { id, code: 2, note: 'Được nhắc' })));
+  const answerOf = (id) => { const i = prompt.indexOf('[' + id + ']'); const rest = prompt.slice(i + id.length + 2); const j = rest.search(/\n\n\[[BCTS]\d/); return (j < 0 ? rest : rest.slice(0, j)).split('Trả lời:')[1] || ''; };
+  return JSON.stringify(ids.map((id) => {
+    if (isB) return { id, knows: true, code: 2, accuracy: 3, confused_with: '', evidence: 'NetSpace là công ty công nghệ', note: 'Mô tả đúng cơ bản' };
+    const on = /NetSpace/.test(answerOf(id));
+    return { id, mentioned: on, code: on ? 2 : 0, evidence: on ? 'NetSpace là công ty công nghệ và truyền thông' : '', note: on ? 'Được nhắc' : 'Không nhắc',
+      brands: on ? [{ name: 'Dinos', rank: 1, sentiment: 'tich_cuc' }, { name: 'NetSpace', rank: 2, sentiment: 'trung_tinh' }] : [{ name: 'Dinos', rank: 1, sentiment: 'tich_cuc' }, { name: 'UpBase', rank: 2 }, { name: 'Melive', rank: 3 }] };
+  }));
+}
+function variantsJSON(prompt) {
+  const out = {};
+  for (const m of prompt.matchAll(/^S(\d+): (.+)$/gm)) out['S' + m[1]] = ['Cách hỏi ngắn: ' + m[2].slice(0, 40), 'nhờ gợi ý giúp: ' + m[2].slice(0, 40)];
+  return JSON.stringify(out);
+}
+const CLAIM_SOURCES = [{ url: 'https://kol.gov.vn/gioi-thieu', title: 'KOL' }, { url: 'https://vtv.vn/bai-viet', title: 'VTV' }];
+function claimJSON() {
+  return JSON.stringify({ sources: [
+    { url: 'https://kol.gov.vn/gioi-thieu', ten_nguon: 'kol.gov.vn', loai: 'co_quan_nha_nuoc', doc_lap: true, xac_nhan: true },
+    { url: 'https://vtv.vn/bai-viet', ten_nguon: 'VTV', loai: 'bao_chi_tu_viet', doc_lap: true, xac_nhan: true },
+    { url: 'https://khong-ton-tai.vn/bia', ten_nguon: 'Bịa', loai: 'bao_chi_tu_viet', doc_lap: true, xac_nhan: true } ], mau_thuan: '', ghi_chu: 'giả lập' });
+}
+
+/** Website và Wikidata giả cho chức năng quét (chỉ dùng khi chạy thử). */
+export function startFakeSite(port = 0) {
+  const page = (body, ld = '') => `<!doctype html><html lang="vi"><head><title>NetSpace giả lập</title><meta name="description" content="Công ty công nghệ và truyền thông">${ld}</head><body>${body}</body></html>`;
+  const s = http.createServer((req, res) => {
+    const ua = req.headers['user-agent'] || '';
+    if (/GPTBot/.test(ua)) { res.writeHead(403); return res.end('blocked'); }
+    if (req.url === '/robots.txt') { res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end('User-agent: GPTBot\nDisallow: /\n\nUser-agent: *\nAllow: /\n'); }
+    if (req.url === '/sitemap.xml') { res.writeHead(200, { 'Content-Type': 'application/xml' }); return res.end('<urlset><url><loc>/a</loc><lastmod>2026-11-02</lastmod></url><url><loc>/b</loc></url></urlset>'); }
+    if (req.url === '/gioi-thieu') { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(page('<h1>Giới thiệu</h1><p>Tầng 3, 229 Tây Sơn. Mã số thuế 0109.</p>')); }
+    if (req.url === '/') { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(page(`<h1>NetSpace</h1><p>${'Nền tảng truyền thông số. '.repeat(60)}</p><a href="/gioi-thieu">Giới thiệu</a><a href="https://facebook.com/netspaceco">FB</a><a href="tel:0900000000">Gọi</a><p>Nhận tư vấn</p>`, '<script type="application/ld+json">{"@type":"Organization","name":"NetSpace","url":"https://netspace.vn"}</script>')); }
+    res.writeHead(404); res.end('<html>404</html>');
+  });
+  return new Promise((r) => s.listen(port, '127.0.0.1', () => r(s)));
+}
+export function startFakeWiki() {
+  const s = http.createServer((req, res) => {
+    const u = new URL(req.url, 'http://x'); res.writeHead(200, { 'Content-Type': 'application/json' });
+    if (u.searchParams.get('action') === 'wbsearchentities') return res.end(JSON.stringify({ search: [{ id: 'Q900' }, { id: 'Q901' }] }));
+    res.end(JSON.stringify({ entities: { Q900: { id: 'Q900', labels: { vi: { value: 'NetSpace' } }, descriptions: { vi: { value: 'công ty truyền thông Việt Nam' } }, claims: { P856: [{ mainsnak: { datavalue: { value: 'https://netspace.vn' } } }] }, sitelinks: {} },
+      Q901: { id: 'Q901', labels: { en: { value: 'Netspace' } }, descriptions: { en: { value: 'telecommunications company in Angola' } }, claims: {}, sitelinks: {} } } }));
+  });
+  return new Promise((r) => s.listen(0, '127.0.0.1', () => r(s)));
 }
 
 export async function startFakes() {
@@ -90,6 +132,12 @@ export async function startFakes() {
     anthropic.calls = (anthropic.calls || 0) + 1; calls.anthropic++;
     if (req.headers['x-api-key'] !== 'test-anthropic') return send(res, 401, { error: { message: 'invalid x-api-key' } });
     const b = await readBody(req); const prompt = String(b.messages[0].content);
+    if (b.tools && prompt.includes('kiểm chứng viên')) {
+      return send(res, 200, { stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20, server_tool_use: { web_search_requests: 1 } }, content: [
+        { type: 'server_tool_use', id: 's1', name: 'web_search', input: { query: 'kiểm chứng' } },
+        { type: 'web_search_tool_result', tool_use_id: 's1', content: CLAIM_SOURCES.map((x) => ({ type: 'web_search_result', ...x })) },
+        { type: 'text', text: claimJSON() }] });
+    }
     if (b.tools) {
       return send(res, 200, { stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20, server_tool_use: { web_search_requests: 1 } }, content: [
         { type: 'text', text: 'Để tôi tìm kiếm.' },
@@ -97,7 +145,7 @@ export async function startFakes() {
         { type: 'web_search_tool_result', tool_use_id: 's1', content: [{ type: 'web_search_result', url: 'https://vtv.vn/a', title: 'VTV' }, { type: 'web_search_result', url: 'https://znews.vn/b', title: 'Znews' }] },
         { type: 'text', text: answerFor(prompt), citations: [{ type: 'web_search_result_location', url: 'https://vtv.vn/a', title: 'VTV' }] }] });
     }
-    const text = prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
+    const text = prompt.includes('Viết lại mỗi tình huống') ? variantsJSON(prompt) : prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
     send(res, 200, { stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20 }, content: [{ type: 'text', text: prompt.includes('JSON') ? '```json\n' + text + '\n```' : text }] });
   });
 
@@ -105,6 +153,7 @@ export async function startFakes() {
     calls.openai++;
     if (req.headers.authorization !== 'Bearer test-openai') return send(res, 401, { error: { message: 'Incorrect API key' } });
     const b = await readBody(req);
+    if (!b.tools) { const p = String(b.input); const t = p.includes('JSON') ? judgeJSON(p) : 'Văn bản do ChatGPT viết (giả lập).'; return send(res, 200, { status: 'completed', usage: { input_tokens: 5, output_tokens: 9 }, output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: t, annotations: [] }] }] }); }
     if (b.tools?.[0]?.type !== 'web_search' || b.tools[0].user_location?.country !== 'VN') return send(res, 400, { error: { message: 'bad tools' } });
     send(res, 200, { status: 'completed', usage: { input_tokens: 5, output_tokens: 9 }, output: [
       { type: 'web_search_call', id: 'w1', status: 'completed', action: { type: 'search', query: 'NetSpace', sources: [{ type: 'url', url: 'https://kol.gov.vn/x' }] } },
@@ -115,6 +164,7 @@ export async function startFakes() {
     calls.gemini++;
     if (req.headers['x-goog-api-key'] !== 'test-gemini') return send(res, 403, { error: { message: 'API key not valid' } });
     const b = await readBody(req);
+    if (!b.tools) { const p = b.contents[0].parts[0].text; const t = p.includes('JSON') ? judgeJSON(p) : 'Văn bản do Gemini viết (giả lập).'; return send(res, 200, { usageMetadata: {}, candidates: [{ finishReason: 'STOP', content: { parts: [{ text: t }] } }] }); }
     if (!b.tools?.[0]?.google_search) return send(res, 400, { error: { message: 'no grounding' } });
     send(res, 200, { usageMetadata: { promptTokenCount: 4, candidatesTokenCount: 8 }, candidates: [{ finishReason: 'STOP',
       content: { parts: [{ text: answerFor(b.contents[0].parts[0].text) }] },
