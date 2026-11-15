@@ -113,6 +113,36 @@ Số lượt gọi cho một audit đầy đủ, 3 AI, lặp 1 lần: **123 lư�
 - Giám khảo chấm điểm là Claude, nên có thể thiên vị với câu trả lời của chính Claude. Xem lại các ô quan trọng bằng mắt trước khi gửi báo cáo cho khách.
 - Prompt hỏi mặc định chỉ yêu cầu “trả lời tiếng Việt, ngắn gọn” để gần với người dùng thật; đổi bằng biến `PROBE_SYSTEM`.
 
+## Nâng cấp đo lường (giai đoạn 1 và 2)
+
+**Hỏi AI**
+- **Cách hỏi khác:** mỗi câu nhóm C có thêm 2 cách diễn đạt cố định; nhóm S có 2 cách hỏi cho mỗi tình huống do AI soạn và chuyên viên sửa (mục "Cách hỏi khác"). Tắt bằng ô "Hỏi thêm 2 cách diễn đạt".
+- **Share of voice:** giám khảo trích mọi thương hiệu được nêu trong câu trả lời nhóm C, T, S kèm vị trí và sắc thái. AI gợi ý đối thủ, chuyên viên bấm Duyệt hoặc Bỏ qua, thêm biến thể tên để gộp đúng.
+- **Nguồn AI hay trích dẫn:** tổng hợp tên miền theo AI; cột "khoảng trống" đếm câu trả lời có đối thủ nhưng thiếu thương hiệu.
+- **Khoảng tin cậy 95% (Wilson)** cho mọi tỷ lệ.
+- **Giám khảo khác hãng** với AI được chấm (bật mặc định) để giảm thiên vị.
+- **Chuyên viên chấm lại** từng câu; app tính tỷ lệ trùng khớp và Cohen's kappa giữa AI và người. Điểm của chuyên viên thay thế điểm của AI khi tính.
+
+**Tab Dữ kiện**
+- **Quét website** (`/api/scan`): robots.txt theo 13 bot AI (RFC 9309), truy cập thử bằng user-agent của bot để phát hiện tường lửa chặn, sitemap, llms.txt, HTML gốc, schema, thông tin pháp lý, giá, đường dẫn hành động. Gợi ý điểm 1.1, 1.2, 1.5, 2.2, 2.4, 2.6, 3.3, 6.4, 6.6.
+- **Wikidata** (`/api/entity`): thực thể nào trỏ đúng website, bao nhiêu thực thể trùng tên. Gợi ý 2.5 khi chưa có dữ liệu từ AI.
+- **Kiểm chứng claim** (`/api/verify-claim`): AI tìm kiếm web cho từng claim; chỉ giữ nguồn có trong kết quả tìm kiếm thật; website thương hiệu không bao giờ là nguồn độc lập. Gợi ý 4.1.
+
+**Quy mô một audit đầy đủ** (3 AI, lặp 1 lần): 91 câu hỏi × 3 = 273 lượt hỏi + khoảng 39 lượt chấm + khoảng 10 lượt cho cách hỏi khác, quét, Wikidata và claim. Bảng "Ước tính trước khi chạy" đã tính các con số này.
+
+**Biến môi trường mới (tuỳ chọn)**
+| Biến | Ý nghĩa |
+|---|---|
+| `WIKIDATA_API` | Mặc định `https://www.wikidata.org/w/api.php` |
+| `SCAN_ALLOW_PRIVATE` | Chỉ để chạy thử cục bộ với website giả; **luôn bị bỏ qua trên Vercel** |
+
+**Giới hạn cần biết**
+- Quét chỉ đọc trang chủ, trang giới thiệu, robots.txt, sitemap và llms.txt; chưa quét trang sản phẩm.
+- Thử truy cập bằng user-agent không thay được bot thật (một số tường lửa xác minh theo IP).
+- Share of voice dựa trên tên thương hiệu do AI trích; cần khai báo biến thể tên của đối thủ để gộp đúng.
+- Kiểm chứng claim vẫn dựa vào AI để phân loại nguồn; xem lại các claim quan trọng bằng mắt.
+- Kiểm thử trên trình duyệt: `npm run dev:fake` rồi `python3 test/ui-upgrade.py` và `python3 test/ui-regression.py`.
+
 ## 10. Chạy thử trên máy
 
 ```bash
