@@ -4,7 +4,10 @@
   "cleanUrls": true,
   "functions": {
     "api/probe.js": { "maxDuration": 120 },
-    "api/claude.js": { "maxDuration": 120 }
+    "api/claude.js": { "maxDuration": 120 },
+    "api/scan.js": { "maxDuration": 60 },
+    "api/entity.js": { "maxDuration": 30 },
+    "api/verify-claim.js": { "maxDuration": 120 }
   },
   "headers": [
     {
