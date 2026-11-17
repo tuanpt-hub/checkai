@@ -273,16 +273,16 @@ const newCtl=()=>{ctl=new AbortController();return ctl.signal};
 async function api(path,{method="GET",body,signal}={}){
   let r;try{r=await fetch(path,{method,credentials:"same-origin",signal,headers:{"Content-Type":"application/json","X-ABR":"1"},body:body===undefined?undefined:JSON.stringify(body)})}
   catch(e){if(e&&e.name==="AbortError")throw {code:"cancelled"};throw {code:"network",message:"Mất kết nối mạng hoặc máy chủ không phản hồi."}}
-  if(r.status===401&&path!=="/api/login"){showLogin("Phiên đăng nhập đã hết. Đăng nhập lại để tiếp tục.");throw {code:"unauthorized"}}
+  if(r.status===401&&path!=="/api/me?op=login"){showLogin("Phiên đăng nhập đã hết. Đăng nhập lại để tiếp tục.");throw {code:"unauthorized"}}
   return CheckAIResponse.read(r)}
 function showLogin(msg){$("#boot").hidden=true;$("#app").hidden=true;$("#login").hidden=false;$("#loginErr").textContent=msg||"";setTimeout(()=>{const f=$("#lgEmail");if(f&&!f.value)f.focus();else $("#lgPass").focus()},50)}
 function showApp(){$("#boot").hidden=true;$("#login").hidden=true;$("#app").hidden=false}
 async function doLogin(){const email=$("#lgEmail").value.trim(),password=$("#lgPass").value;if(!email||!password){$("#loginErr").textContent="Nhập email và mật khẩu.";return}
   const b=$("#lgBtn");b.disabled=true;$("#loginErr").textContent="";
-  try{await api("/api/login",{method:"POST",body:{email,password}});$("#lgPass").value="";await init(true)}catch(e){$("#loginErr").textContent=e.message||"Không đăng nhập được. Thử lại."}
+  try{await api("/api/me?op=login",{method:"POST",body:{email,password}});$("#lgPass").value="";await init(true)}catch(e){$("#loginErr").textContent=e.message||"Không đăng nhập được. Thử lại."}
   b.disabled=false}
 async function doLogout(){clearAiNotice();if(dirty.size&&!confirm("Còn thay đổi chưa lưu lên máy chủ. Vẫn đăng xuất?"))return;
-  try{await api("/api/logout",{method:"POST"})}catch(e){}
+  try{await api("/api/me?op=logout",{method:"POST"})}catch(e){}
   audits={};index=[];cur=null;me=null;draft={};dirty.clear();sessionStorage.removeItem("abr_cur");showLogin("")}
 async function init(afterLogin){
   try{me=await api("/api/me")}catch(e){showLogin(e.code==="unauthorized"?"":(e.message||"Không kết nối được máy chủ."));return}
@@ -474,14 +474,14 @@ async function genText(key,prompt){clearAiNotice();const a=A();flash[key]="";bus
   busy=null;render()}
 async function runScan(){const a=A();if(!a||busy)return;const url=String(draft.scanUrl!=null?draft.scanUrl:a.profile.website||"").trim();if(!url){flash.scan="Nhập website cần quét.";return render()}
   flash.scan="";setBusy("scan","Đang quét website (có thể mất 20–40 giây)…");
-  try{a.scan=await api("/api/scan",{method:"POST",body:{url,legal:a.profile.legal||""},signal:newCtl()});touch(a)}catch(e){if(e.code!=="cancelled"&&e.code!=="unauthorized")flash.scan=emsg(e)}
+  try{a.scan=await api("/api/scan?op=scan",{method:"POST",body:{url,legal:a.profile.legal||""},signal:newCtl()});touch(a)}catch(e){if(e.code!=="cancelled"&&e.code!=="unauthorized")flash.scan=emsg(e)}
   setBusy(null)}
 async function runEntity(){const a=A();if(!a||busy)return;flash.entity="";setBusy("entity","Đang tra Wikidata…");
-  try{a.entity=await api("/api/entity",{method:"POST",body:{name:a.profile.brand,aliases:a.profile.aliases,website:a.profile.website},signal:newCtl()});touch(a)}catch(e){if(e.code!=="cancelled"&&e.code!=="unauthorized")flash.entity=emsg(e)}
+  try{a.entity=await api("/api/scan?op=entity",{method:"POST",body:{name:a.profile.brand,aliases:a.profile.aliases,website:a.profile.website},signal:newCtl()});touch(a)}catch(e){if(e.code!=="cancelled"&&e.code!=="unauthorized")flash.entity=emsg(e)}
   setBusy(null)}
 async function runClaims(list){const a=A();if(!a||busy||!list.length)return;flash.claims="";stopFlag=false;const sig=newCtl();busy={k:"claims",msg:"Đang kiểm chứng claim…",pct:0};render();
   a.claimChecks=a.claimChecks||{};let done=0;const errs=[],engine=draft.claimEngine||(me&&me.engines.claude?"claude":"openai");
-  await pool(list,2,async c=>{try{const r=await api("/api/verify-claim",{method:"POST",body:{claim:c,brand:a.profile.brand,website:a.profile.website,engine},signal:sig});noteUsage(r);delete r.used;delete r.limit;a.claimChecks[c]=r;touch(a)}
+  await pool(list,2,async c=>{try{const r=await api("/api/scan?op=claim",{method:"POST",body:{claim:c,brand:a.profile.brand,website:a.profile.website,engine},signal:sig});noteUsage(r);delete r.used;delete r.limit;a.claimChecks[c]=r;touch(a)}
     catch(e){if(["cancelled","unauthorized","daily_limit"].includes(e.code))stopFlag=true;if(e.code!=="cancelled"&&e.code!=="unauthorized")errs.push(emsg(e))}
     done++;progress(`Đã kiểm chứng ${done}/${list.length} claim…`,Math.round(done/list.length*100))});
   busy=null;flash.claims=[...new Set(errs)].slice(0,3).join(" · ");render()}
@@ -520,7 +520,7 @@ async function suggestCompetitors(){const a=A();if(!a||busy)return;flash.comp=""
 const intake={},intakeLoading={};
 const LBL={brand:"Tên thương hiệu",legal:"Tên pháp lý",aliases:"Tên gọi khác",website:"Website",channels:"Kênh chính thức",category:"Ngành",market:"Thị trường",oneliner:"Câu định vị",products:"Sản phẩm và dịch vụ",audience:"Khách hàng mục tiêu",leaders:"Lãnh đạo",claims:"Dữ kiện, claim",topics:"Chủ đề chuyên môn",scenarios:"Tình huống mua hàng"};
 async function loadIntake(a,force){if(!a||a._v==null||(intakeLoading[a.id]&&!force))return;intakeLoading[a.id]=true;
-  try{const [l,s]=await Promise.all([api("/api/intake-links?auditId="+encodeURIComponent(a.id)),api("/api/intake-submissions?auditId="+encodeURIComponent(a.id))]);intake[a.id]={...(intake[a.id]||{}),links:l.links||[],subs:s.submissions||[],err:""}}
+  try{const [l,s]=await Promise.all([api("/api/intake-links?op=links&auditId="+encodeURIComponent(a.id)),api("/api/intake-links?op=subs&auditId="+encodeURIComponent(a.id))]);intake[a.id]={...(intake[a.id]||{}),links:l.links||[],subs:s.submissions||[],err:""}}
   catch(e){if(e.code!=="unauthorized")intake[a.id]={...(intake[a.id]||{}),links:[],subs:[],err:emsg(e)}}
   intakeLoading[a.id]=false;if(tab==="profile"&&A()===a)keepScroll(render)}
 function intakePanel(a){if(!intake[a.id]&&a._v!=null&&!intakeLoading[a.id])setTimeout(()=>loadIntake(a),0);const st=intake[a.id]||{};
@@ -538,16 +538,16 @@ function intakePanel(a){if(!intake[a.id]&&a._v!=null&&!intakeLoading[a.id])setTi
 async function intakeNew(){const a=A();if(!a||busy)return;flash.intake="";flash.intakeOk="";
   if(a._v==null||dirty.has(a.id))await saveAudit(a.id);
   if(a._v==null){flash.intake="Chưa lưu được audit lên máy chủ. Thử lại sau ít giây.";return render()}
-  try{const r=await api("/api/intake-links",{method:"POST",body:{auditId:a.id,days:Number(draft.intakeDays||14)}});intake[a.id]={...(intake[a.id]||{}),newLink:location.origin+"/intake#t="+r.token};await loadIntake(a,true)}
+  try{const r=await api("/api/intake-links?op=links",{method:"POST",body:{auditId:a.id,days:Number(draft.intakeDays||14)}});intake[a.id]={...(intake[a.id]||{}),newLink:location.origin+"/intake#t="+r.token};await loadIntake(a,true)}
   catch(e){if(e.code!=="unauthorized")flash.intake=emsg(e);render()}}
-async function intakeRevoke(id){const a=A();try{await api("/api/intake-links?id="+encodeURIComponent(id),{method:"DELETE"});if(intake[a.id])intake[a.id].newLink="";await loadIntake(a,true)}catch(e){if(e.code!=="unauthorized"){flash.intake=emsg(e);render()}}}
+async function intakeRevoke(id){const a=A();try{await api("/api/intake-links?op=links&id="+encodeURIComponent(id),{method:"DELETE"});if(intake[a.id])intake[a.id].newLink="";await loadIntake(a,true)}catch(e){if(e.code!=="unauthorized"){flash.intake=emsg(e);render()}}}
 async function intakeApply(id){const a=A();if(!a)return;const st=intake[a.id]||{},s=(st.subs||[]).find(x=>x.id===id),box=document.querySelector(`[data-sub="${CSS.escape(id)}"]`);if(!s||!box)return;
   const d=s.data||{},fields=[...box.querySelectorAll("input[data-field]:checked")].map(i=>i.dataset.field).filter(k=>LBL[k]&&typeof (d.fields||{})[k]==="string"),comps=[...box.querySelectorAll("input[data-comp]:checked")].map(i=>(d.competitors||[])[Number(i.dataset.comp)]).filter(Boolean);
   fields.forEach(k=>{a.profile[k]=d.fields[k]});
   comps.forEach(c=>{a.competitors=(a.competitors||[]).filter(x=>CheckAISov.norm(x.name)!==CheckAISov.norm(c.name));a.competitors.push({name:c.name,aliases:c.aliases||"",status:"approved",from:"thuong_hieu"})});
-  touch(a);flash.intake="";try{await api("/api/intake-submissions",{method:"POST",body:{id,action:"applied"}})}catch(e){if(e.code!=="unauthorized")flash.intake=emsg(e)}
+  touch(a);flash.intake="";try{await api("/api/intake-links?op=subs",{method:"POST",body:{id,action:"applied"}})}catch(e){if(e.code!=="unauthorized")flash.intake=emsg(e)}
   st.subs=(st.subs||[]).filter(x=>x.id!==id);flash.intakeOk=`Đã áp dụng ${fields.length} mục và ${comps.length} đối thủ vào hồ sơ.`;keepScroll(render)}
-async function intakeReject(id){const a=A();if(!a)return;const st=intake[a.id]||{};flash.intake="";try{await api("/api/intake-submissions",{method:"POST",body:{id,action:"rejected"}})}catch(e){if(e.code!=="unauthorized"){flash.intake=emsg(e);return render()}}
+async function intakeReject(id){const a=A();if(!a)return;const st=intake[a.id]||{};flash.intake="";try{await api("/api/intake-links?op=subs",{method:"POST",body:{id,action:"rejected"}})}catch(e){if(e.code!=="unauthorized"){flash.intake=emsg(e);return render()}}
   st.subs=(st.subs||[]).filter(x=>x.id!==id);flash.intakeOk="Đã từ chối thông tin gửi lên.";keepScroll(render)}
 /* ---------- Bước 2: chạy toàn bộ dữ kiện ---------- */
 function evAllPanel(a){const n=lines(a.profile.claims).length,done=Object.keys(a.claimChecks||{}).filter(c=>lines(a.profile.claims).includes(c)).length;
