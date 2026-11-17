@@ -113,6 +113,31 @@ Số lượt gọi cho một audit đầy đủ, 3 AI, lặp 1 lần: **123 lư�
 - Giám khảo chấm điểm là Claude, nên có thể thiên vị với câu trả lời của chính Claude. Xem lại các ô quan trọng bằng mắt trước khi gửi báo cáo cho khách.
 - Prompt hỏi mặc định chỉ yêu cầu “trả lời tiếng Việt, ngắn gọn” để gần với người dùng thật; đổi bằng biến `PROBE_SYSTEM`.
 
+## Quy trình audit 6 bước
+
+1. **Hồ sơ thương hiệu** – dữ kiện chuẩn do thương hiệu cung cấp, chủ đề, tình huống mua hàng và **đối thủ cạnh tranh** (nhập tay, nhờ AI gợi ý theo ngành, hoặc duyệt thương hiệu AI đã nêu sau bước Hỏi AI). Có thể **gửi link riêng cho thương hiệu tự nhập** (xem dưới).
+2. **Dữ kiện** – nút "Chạy toàn bộ dữ kiện": quét website → tra Wikidata → kiểm chứng claim.
+3. **Hỏi AI** – chạy thư viện prompt trên Claude, ChatGPT, Gemini; share of voice, nguồn trích dẫn, độ tin cậy giám khảo.
+4. **Chấm 6 lớp** – "Chấm tự động 6 lớp" hoặc "Chấm lại lớp này": tiêu chí có dữ liệu máy được chấm theo quy tắc (miễn phí); tiêu chí còn lại do AI chấm từ toàn bộ dữ kiện (mỗi lớp 1 lượt gọi), gắn nhãn **AI · cần duyệt**; nếu thiếu dữ kiện AI để trống và ghi cần thu thập gì. **Điểm chuyên viên chấm tay không bao giờ bị ghi đè.** Chuyên viên bấm "Duyệt điểm này" hoặc "Duyệt tất cả".
+5. **Kết quả** – nhắc khi còn điểm AI chưa duyệt.
+6. **Công cụ cải thiện** – AI soạn **kế hoạch hành động 90 ngày** từ điểm và dữ kiện của audit (mỗi việc có căn cứ, các bước, người phụ trách, cách đo lại); kèm JSON-LD, bộ mô tả chuẩn, hỏi–đáp, robots.txt. Kế hoạch được đưa vào báo cáo xuất ra.
+
+### Link cho thương hiệu tự nhập
+
+**Cần chạy một lần** `supabase/migrations/002_intake.sql` trong Supabase → SQL Editor (tạo bảng `intake_links`, `intake_submissions`).
+
+- Ở bước Hồ sơ → "Thương hiệu tự nhập" → chọn hiệu lực (7/14/30 ngày) → **Tạo link mới**. Link chỉ hiện **một lần**; gửi qua kênh riêng.
+- Thương hiệu mở `https://checkai.netspace.vn/intake#t=…` (không cần đăng nhập), chỉ thấy và sửa phần hồ sơ và đối thủ, **không thấy điểm hay dữ liệu audit khác**. Có nút nhờ AI gợi ý chủ đề, tình huống, đối thủ (giới hạn lượt theo link).
+- Thông tin gửi lên vào **hàng chờ**; NetSpace xem từng mục (hiện tại ↔ đề xuất), bỏ chọn mục không dùng, bấm **Áp dụng mục đã chọn** hoặc **Từ chối**. Hồ sơ audit không đổi trước khi duyệt.
+- Bảo mật: token 256 bit, máy chủ chỉ lưu **mã băm**; token nằm sau dấu `#` nên không đi vào nhật ký máy chủ và bị xóa khỏi thanh địa chỉ ngay khi mở; có thời hạn, **thu hồi được**; giới hạn số lần gửi và lượt AI mỗi link; chi phí AI tính vào hạn mức của người tạo link.
+
+| Biến (tuỳ chọn) | Mặc định | Ý nghĩa |
+|---|---|---|
+| `INTAKE_AI_LIMIT` | 6 | Số lượt gợi ý bằng AI tối đa mỗi link |
+| `INTAKE_SUBMISSION_LIMIT` | 30 | Số lần gửi tối đa mỗi link |
+
+Kiểm thử trên trình duyệt cho quy trình này: `npm run dev:fake` rồi `python3 test/ui-workflow.py`.
+
 ## Nâng cấp đo lường (giai đoạn 1 và 2)
 
 **Hỏi AI**
