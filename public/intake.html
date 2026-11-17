@@ -6,16 +6,22 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="color-scheme" content="light">
 <title>Hồ sơ thương hiệu – NetSpace AI Brand Readiness</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<link rel="icon" type="image/png" href="/assets/netspace-symbol.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
 <style>
 :root{--bg:#f7f8fb;--card:#fff;--line:#e6e9f0;--line2:#d6dbe5;--text:#18212f;--muted:#697386;--accent:#ec6a3a;--ok:#19896b;--danger:#c94343;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.6 "Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:860px;margin:0 auto;padding:24px 16px 80px}
-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.mark{width:38px;height:38px;border-radius:50%;background:conic-gradient(#4c9fe7 0 34%,#55b79b 34% 58%,#e6b75e 58% 76%,#df83ad 76% 90%,#9d87e3 90% 100%);flex:none;position:relative}
-.mark::after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--bg)}
-h1{font-size:clamp(20px,4vw,26px);margin:0;line-height:1.25}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;margin-bottom:22px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;color:var(--text)}
+.brand img{width:40px;height:35px;object-fit:contain;flex:none}
+.brand strong{display:block;font-size:22px;font-weight:700;letter-spacing:-.8px;line-height:1.2}
+.brand small{display:block;font-size:11px;color:var(--muted);letter-spacing:.2px;margin-top:1px}
+.topbar .tag{font-size:12px;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.eyebrow{display:block;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--accent);margin-bottom:6px}
+h1{font-size:clamp(22px,4.5vw,28px);margin:0;line-height:1.25;letter-spacing:-.4px}
+@media (max-width:420px){.topbar .tag{display:none}}
 h2{font-size:17px;margin:0 0 4px}
 .sub{color:var(--muted);font-size:13px;margin:2px 0 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
@@ -25,7 +31,7 @@ h2{font-size:17px;margin:0 0 4px}
 @media (max-width:640px){.grid{grid-template-columns:minmax(0,1fr)}.card{padding:16px}}
 label{display:block;font-weight:600;font-size:13px;margin:14px 0 5px}
 label span{font-weight:400;color:var(--muted)}
-input[type=text],textarea{width:100%;font:inherit;color:inherit;background:#fbfcfe;border:1px solid var(--line2);border-radius:9px;padding:10px 12px}
+input[type=text],input[type=email],input[type=tel],textarea{width:100%;font:inherit;color:inherit;background:#fbfcfe;border:1px solid var(--line2);border-radius:9px;padding:10px 12px}
 textarea{resize:vertical}
 input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #ec6a3a26}
 button{font:inherit;cursor:pointer;border:1px solid var(--line2);background:#fff;color:var(--text);border-radius:9px;padding:9px 14px;font-weight:500}
@@ -49,7 +55,8 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </head>
 <body>
 <div class="wrap">
-  <header><span class="mark" aria-hidden="true"></span><div><h1 id="title">Hồ sơ thương hiệu</h1><p class="sub">NetSpace AI Brand Readiness · thông tin bạn gửi sẽ được NetSpace xem lại trước khi dùng cho audit</p></div></header>
+  <header class="topbar"><div class="brand"><img src="/assets/netspace-symbol.png" width="40" height="35" alt="Biểu tượng NetSpace"><div><strong>NetSpace</strong><small>AI Brand Readiness</small></div></div><span class="tag">Biểu mẫu dành cho thương hiệu</span></header>
+  <div class="page-head"><span class="eyebrow">HỒ SƠ THƯƠNG HIỆU</span><h1 id="title">Hồ sơ thương hiệu</h1><p class="sub">Thông tin bạn gửi sẽ được NetSpace xem lại trước khi dùng cho audit AI Brand Readiness.</p></div>
   <div id="state" class="note">Đang tải…</div>
   <form id="form" hidden novalidate>
     <div class="card"><h2>1. Thông tin nhận diện</h2><p class="lead">Tên gọi và định danh thống nhất của thương hiệu.</p><div class="grid" id="g1"></div></div>
@@ -61,7 +68,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
       <div id="comps"></div>
       <div class="row"><button type="button" id="addComp">+ Thêm đối thủ</button><button type="button" data-ai="competitors">Nhờ AI gợi ý đối thủ</button></div>
       <div class="sugg" id="compSugg"></div></div>
-    <div class="card"><h2>5. Người gửi</h2><div class="grid"><div><label for="s_name">Họ tên</label><input type="text" id="s_name" autocomplete="name"></div><div><label for="s_role">Chức vụ</label><input type="text" id="s_role"></div></div></div>
+    <div class="card"><h2>5. Người gửi</h2><div class="grid"><div><label for="s_name">Họ tên</label><input type="text" id="s_name" autocomplete="name"></div><div><label for="s_role">Chức vụ</label><input type="text" id="s_role" autocomplete="organization-title"></div><div><label for="s_email">Email</label><input type="email" id="s_email" autocomplete="email" inputmode="email" spellcheck="false" placeholder="ten@congty.vn"></div><div><label for="s_phone">Số điện thoại</label><input type="tel" id="s_phone" autocomplete="tel" inputmode="tel" placeholder="0912 345 678"></div></div><p class="hint">Để NetSpace liên hệ khi cần làm rõ thông tin. Không bắt buộc.</p></div>
     <div class="card foot"><span class="hint" id="exp"></span><button type="submit" class="primary" id="send">Gửi cho NetSpace</button></div>
     <div id="msg" role="status" aria-live="polite"></div>
   </form>
@@ -70,6 +77,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 const F=[["g1","brand","Tên thương hiệu","",0],["g1","legal","Tên pháp lý","",0],["g1","aliases","Tên gọi khác","Các tên đang lưu hành, cách nhau bằng dấu chấm phẩy",0],["g1","website","Website chính thức","Ví dụ: https://tenmien.vn",0],["g1","category","Ngành hoặc lĩnh vực","",2],["g1","market","Thị trường","Ví dụ: Việt Nam",0],
  ["g2","oneliner","Câu định vị","Bán gì, cho ai, ở đâu, khác biệt ở điểm nào",3,"full"],["g2","products","Sản phẩm và dịch vụ","",3],["g2","audience","Khách hàng mục tiêu","",3],["g2","leaders","Lãnh đạo","Họ tên – Chức danh; cách nhau bằng dấu chấm phẩy",3],["g2","channels","Các kênh chính thức","Mỗi dòng một đường dẫn (Facebook, LinkedIn, YouTube…)",3],["g2","claims","Các dữ kiện, thành tựu quan trọng","Mỗi dòng một dữ kiện, kèm nguồn nếu có (giải thưởng, đối tác, số liệu)",4,"full"],
  ["g3","topics","Chủ đề chuyên môn","Mỗi dòng một chủ đề, tối đa 10",8],["g3","scenarios","Tình huống mua hàng","Mỗi dòng một câu khách hay hỏi, không nhắc tên thương hiệu, tối đa 20",8]];
+const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,PHONE_RE=/^\+?[0-9][0-9 .()-]{7,18}[0-9]$/;
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const token=(()=>{const m=location.hash.match(/t=([A-Za-z0-9_-]{30,100})/);if(m){try{sessionStorage.setItem("intake_t",m[1])}catch(e){}history.replaceState(null,"",location.pathname)}try{return sessionStorage.getItem("intake_t")||""}catch(e){return m?m[1]:""}})();
 async function call(path,opt={}){let r;try{r=await fetch(path,{method:opt.method||"GET",headers:{"Content-Type":"application/json","X-Intake-Token":token},body:opt.body?JSON.stringify(opt.body):undefined})}catch(e){throw {message:"Mất kết nối mạng. Thử lại."}}
@@ -79,13 +87,13 @@ function field([g,k,label,hint,rows,cls]){const box=document.createElement("div"
 function compRow(c={}){const d=document.createElement("div");d.className="comp";d.innerHTML=`<input type="text" class="cn" placeholder="Tên đối thủ" value="${esc(c.name||"")}"><input type="text" class="ca" placeholder="Tên gọi khác (không bắt buộc)" value="${esc(c.aliases||"")}"><button type="button" class="ghost" aria-label="Xóa">Xóa</button>`;d.querySelector("button").onclick=()=>d.remove();$("#comps").appendChild(d)}
 let aiLeft=0;
 function setAiLeft(n){aiLeft=n;$("#aiLeft").textContent=n>0?`Còn ${n} lượt gợi ý bằng AI`:"Đã hết lượt gợi ý bằng AI";document.querySelectorAll("[data-ai]").forEach(b=>b.disabled=n<=0)}
-function collect(){const fields={};for(const f of F)fields[f[1]]=$("#f_"+f[1]).value;return {fields,competitors:[...document.querySelectorAll(".comp")].map(r=>({name:r.querySelector(".cn").value.trim(),aliases:r.querySelector(".ca").value.trim()})).filter(c=>c.name),submitter:{name:$("#s_name").value,role:$("#s_role").value}}}
+function collect(){const fields={};for(const f of F)fields[f[1]]=$("#f_"+f[1]).value;return {fields,competitors:[...document.querySelectorAll(".comp")].map(r=>({name:r.querySelector(".cn").value.trim(),aliases:r.querySelector(".ca").value.trim()})).filter(c=>c.name),submitter:{name:$("#s_name").value,role:$("#s_role").value,email:$("#s_email").value.trim(),phone:$("#s_phone").value.trim()}}}
 async function init(){
   if(!token){$("#state").className="note err";$("#state").textContent="Link không hợp lệ. Hãy mở đúng đường dẫn NetSpace đã gửi.";return}
   let d;try{d=await call("/api/intake")}catch(e){$("#state").className="note err";$("#state").textContent=e.message||"Không mở được hồ sơ.";return}
   F.forEach(field);for(const f of F)$("#f_"+f[1]).value=d.fields[f[1]]||"";
   (d.competitors.length?d.competitors:[{}]).forEach(compRow);
-  if(d.brand){$("#title").textContent="Hồ sơ thương hiệu "+d.brand;document.title="Hồ sơ "+d.brand+" – NetSpace"}
+  if(d.brand){$("#title").textContent=d.brand;document.title="Hồ sơ "+d.brand+" – NetSpace AI Brand Readiness"}
   $("#exp").textContent="Link có hiệu lực đến "+new Date(d.expiresAt).toLocaleDateString("vi-VN")+". Bạn có thể gửi nhiều lần; NetSpace dùng bản mới nhất sau khi xem lại.";
   setAiLeft(d.aiLeft);$("#state").hidden=true;$("#form").hidden=false}
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-ai]");if(!b||aiLeft<=0)return;const kind=b.dataset.ai;
@@ -99,7 +107,10 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-ai]"
   b.textContent=old;b.disabled=aiLeft<=0});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-add]");if(!b)return;const empty=[...document.querySelectorAll(".comp")].find(r=>!r.querySelector(".cn").value.trim());if(empty)empty.querySelector(".cn").value=b.dataset.add;else compRow({name:b.dataset.add});b.remove()});
 $("#addComp").onclick=()=>compRow();
-$("#form").addEventListener("submit",async e=>{e.preventDefault();const b=$("#send");b.disabled=true;msg("");
+$("#form").addEventListener("submit",async e=>{e.preventDefault();const em=$("#s_email").value.trim(),ph=$("#s_phone").value.trim();
+  if(em&&!EMAIL_RE.test(em)){msg("Email chưa đúng định dạng, ví dụ ten@congty.vn.","err");$("#s_email").focus();return}
+  if(ph&&!PHONE_RE.test(ph)){msg("Số điện thoại chưa đúng định dạng, ví dụ 0912 345 678 hoặc +84 912 345 678.","err");$("#s_phone").focus();return}
+  const b=$("#send");b.disabled=true;msg("");
   try{const r=await call("/api/intake",{method:"POST",body:collect()});msg(`Đã gửi. NetSpace sẽ xem lại và cập nhật vào hồ sơ audit. Bạn vẫn có thể sửa và gửi lại (còn ${r.submissionsLeft} lần).`,"ok")}
   catch(err){msg(err.message||"Chưa gửi được. Thử lại.","err")}b.disabled=false});
 init();
