@@ -1,25 +1,7 @@
-import { route, ok, allowMethods } from './_lib/util.js';
-import { requireUser } from './_lib/auth.js';
-import { MODELS, configured } from './_lib/providers.js';
-import { dailyLimit, getUsage } from './_lib/usage.js';
-import { envInt } from './_lib/util.js';
-import { modelOptions, PRICING_DATE } from './_lib/model-options.js';
-import { gatewayEnabled } from './_lib/gateway.js';
+import { dispatch } from './_lib/dispatch.js';
+import me from './_lib/op-me.js';
+import login from './_lib/op-login.js';
+import logout from './_lib/op-logout.js';
 
-export default route(async (req, res) => {
-  allowMethods(req, ['GET']);
-  const user = await requireUser(req, res);
-  const used = await getUsage(user.email).catch(() => null);
-  ok(res, {
-    email: user.email,
-    used,
-    limit: dailyLimit(),
-    engines: configured(),
-    judgeAvailable: Object.values(configured()).some(Boolean),
-    models: MODELS(),
-    modelOptions: modelOptions(MODELS()),
-    gateway: gatewayEnabled(),
-    pricingDate: PRICING_DATE,
-    searchMaxUses: envInt('WEB_SEARCH_MAX_USES', 3),
-  });
-});
+// Đăng nhập, đăng xuất và thông tin phiên: /api/me, /api/me?op=login, /api/me?op=logout
+export default dispatch({ me, login, logout }, 'me');
