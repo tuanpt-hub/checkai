@@ -33,13 +33,22 @@ export function limitIp(req, key, max, windowMs) {
   list.push(now); tries.set(k, list); if (tries.size > 5000) tries.clear();
 }
 
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const PHONE_RE = /^\+?[0-9][0-9 .()-]{7,18}[0-9]$/;
+/** Email, số điện thoại người gửi: không bắt buộc, nhưng nếu có thì phải đúng định dạng. */
+export function checkSubmitter(sub) {
+  if (sub.submitter.email && !EMAIL_RE.test(sub.submitter.email)) throw new HttpError(400, 'bad_email', 'Email người gửi chưa đúng định dạng.');
+  if (sub.submitter.phone && !PHONE_RE.test(sub.submitter.phone)) throw new HttpError(400, 'bad_phone', 'Số điện thoại người gửi chưa đúng định dạng.');
+}
+
 export function cleanSubmission(body) {
   const src = body && typeof body.fields === 'object' && body.fields ? body.fields : {}, fields = {};
   for (const [k, max] of Object.entries(FIELDS)) if (typeof src[k] === 'string') fields[k] = src[k].replace(/\r\n?/g, '\n').slice(0, max);
   const competitors = (Array.isArray(body && body.competitors) ? body.competitors : []).slice(0, 20)
     .map(c => ({ name: String(c && c.name || '').trim().slice(0, 80), aliases: String(c && c.aliases || '').trim().slice(0, 200) })).filter(c => c.name);
   const s = body && body.submitter || {};
-  const submitter = { name: String(s.name || '').trim().slice(0, 120), role: String(s.role || '').trim().slice(0, 120) };
+  const submitter = { name: String(s.name || '').trim().slice(0, 120), role: String(s.role || '').trim().slice(0, 120),
+    email: String(s.email || '').trim().slice(0, 200), phone: String(s.phone || '').trim().slice(0, 40) };
   return { fields, competitors, submitter };
 }
 

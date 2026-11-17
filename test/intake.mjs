@@ -35,11 +35,12 @@ try {
   assert.equal((await pub('/api/intake', token, 'GET', null, { Origin: 'https://evil.example' })).status, 403);
   // gửi thông tin → hàng chờ
   assert.equal((await pub('/api/intake', token, 'POST', { fields: {} })).status, 400, 'empty submission rejected');
-  const sub = await pub('/api/intake', token, 'POST', { fields: { oneliner: 'Định vị mới', legal: 'x'.repeat(5000), unknownField: 'bỏ qua' }, competitors: [{ name: 'Yeah1' }, { name: '' }], submitter: { name: 'Chị A', role: 'Marketing' } });
+  const sub = await pub('/api/intake', token, 'POST', { fields: { oneliner: 'Định vị mới', legal: 'x'.repeat(5000), unknownField: 'bỏ qua' }, competitors: [{ name: 'Yeah1' }, { name: '' }], submitter: { name: 'Chị A', role: 'Marketing', email: 'lan@netspace.vn', phone: '0912 345 678' } });
   assert.equal(sub.status, 200, JSON.stringify(sub.data));
   const q = await team('/api/intake-submissions?auditId=aud-intake'); assert.equal(q.data.submissions.length, 1);
   const d = q.data.submissions[0].data; assert.equal(d.fields.oneliner, 'Định vị mới'); assert.equal(d.fields.legal.length, 300, 'field length capped');
-  assert.ok(!('unknownField' in d.fields)); assert.deepEqual(d.competitors, [{ name: 'Yeah1', aliases: '' }]); assert.equal(d.submitter.name, 'Chị A');
+  assert.ok(!('unknownField' in d.fields)); assert.deepEqual(d.competitors, [{ name: 'Yeah1', aliases: '' }]); assert.equal(d.submitter.name, 'Chị A'); assert.equal(d.submitter.email, 'lan@netspace.vn'); assert.equal(d.submitter.phone, '0912 345 678');
+  for (const bad of [{ email: 'khong-phai-email' }, { phone: 'goi tôi' }, { phone: '12' }]) assert.equal((await pub('/api/intake', token, 'POST', { fields: { market: 'VN' }, submitter: bad })).status, 400, 'invalid contact rejected: ' + JSON.stringify(bad));
   const audit = await team('/api/audits/aud-intake'); assert.equal(audit.data.audit.profile.oneliner, undefined, 'submission must not touch the audit before review');
   assert.equal((await team('/api/intake-submissions', 'POST', { id: q.data.submissions[0].id, action: 'applied' })).status, 200);
   assert.equal((await team('/api/intake-submissions', 'POST', { id: q.data.submissions[0].id, action: 'rejected' })).status, 409, 'cannot review twice');
