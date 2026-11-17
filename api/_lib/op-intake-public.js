@@ -1,6 +1,6 @@
 import { route, ok, allowMethods, readJson, HttpError } from './util.js';
 import { rest } from './supabase.js';
-import { linkFromRequest, limitIp, cleanSubmission, FIELDS, AI_LIMIT, SUBMISSION_LIMIT } from './intake.js';
+import { linkFromRequest, limitIp, cleanSubmission, checkSubmitter, FIELDS, AI_LIMIT, SUBMISSION_LIMIT } from './intake.js';
 
 /** Trang công khai cho thương hiệu: đọc hồ sơ hiện có và gửi thông tin vào hàng chờ duyệt. Không trả điểm hay dữ liệu audit khác. */
 export default route(async (req, res) => {
@@ -20,6 +20,7 @@ export default route(async (req, res) => {
   limitIp(req, 'intake-post', 10, 10 * 60_000);
   if ((link.submissions || 0) >= SUBMISSION_LIMIT()) throw new HttpError(429, 'submission_limit', 'Link này đã đạt số lần gửi tối đa. Liên hệ NetSpace.');
   const sub = cleanSubmission(await readJson(req, 80_000));
+  checkSubmitter(sub);
   if (!Object.values(sub.fields).some(v => v.trim()) && !sub.competitors.length) throw new HttpError(400, 'empty', 'Chưa có thông tin nào để gửi.');
   const ins = await rest('POST', 'intake_submissions', { body: { audit_id: link.audit_id, link_id: link.id, data: sub }, prefer: 'return=minimal' });
   if (ins.status >= 300) throw new HttpError(502, 'db_error', 'Chưa gửi được. Thử lại sau ít phút.');
