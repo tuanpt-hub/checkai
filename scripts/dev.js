@@ -51,6 +51,8 @@ export async function startServer(port = Number(process.env.PORT) || 3000) {
       return res.end(JSON.stringify({ error: { code: 'not_found' } }));
     }
     let file = path.join(root, 'public', url.pathname === '/' ? 'index.html' : url.pathname);
+    // Giống cleanUrls của Vercel: /intake → public/intake.html
+    if (!path.extname(file) && fs.existsSync(file + '.html')) file += '.html';
     if (!file.startsWith(path.join(root, 'public')) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
       res.statusCode = 404;
       return res.end('Not found');

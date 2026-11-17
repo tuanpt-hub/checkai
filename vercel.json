@@ -7,7 +7,8 @@
     "api/claude.js": { "maxDuration": 120 },
     "api/scan.js": { "maxDuration": 60 },
     "api/entity.js": { "maxDuration": 30 },
-    "api/verify-claim.js": { "maxDuration": 120 }
+    "api/verify-claim.js": { "maxDuration": 120 },
+    "api/intake-ai.js": { "maxDuration": 60 }
   },
   "headers": [
     {
