@@ -1,7 +1,7 @@
-import { route, ok, allowMethods, readJson, HttpError } from './_lib/util.js';
-import { rest } from './_lib/supabase.js';
-import { bump } from './_lib/usage.js';
-import { linkFromRequest, limitIp, cleanSubmission, AI_LIMIT, suggest } from './_lib/intake.js';
+import { route, ok, allowMethods, readJson, HttpError } from './util.js';
+import { rest } from './supabase.js';
+import { bump } from './usage.js';
+import { linkFromRequest, limitIp, cleanSubmission, AI_LIMIT, suggest } from './intake.js';
 
 /** Gợi ý bằng AI trên form công khai. Giới hạn số lượt theo link; chi phí tính vào hạn mức của người tạo link. */
 export default route(async (req, res) => {

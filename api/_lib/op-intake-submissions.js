@@ -1,7 +1,7 @@
-import { route, ok, allowMethods, readJson, HttpError } from './_lib/util.js';
-import { requireUser } from './_lib/auth.js';
-import { rest } from './_lib/supabase.js';
-import { AUDIT_ID } from './_lib/intake.js';
+import { route, ok, allowMethods, readJson, HttpError } from './util.js';
+import { requireUser } from './auth.js';
+import { rest } from './supabase.js';
+import { AUDIT_ID } from './intake.js';
 
 /** Hàng chờ thông tin thương hiệu gửi lên. Áp dụng vào hồ sơ do giao diện làm (để giữ kiểm tra phiên bản audit); máy chủ chỉ đánh dấu trạng thái. */
 export default route(async (req, res) => {

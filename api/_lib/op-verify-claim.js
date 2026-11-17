@@ -1,8 +1,8 @@
-import { route, ok, allowMethods, readJson, HttpError, extractJSON } from './_lib/util.js';
-import { requireUser } from './_lib/auth.js';
-import { ask, configured, MODELS } from './_lib/providers.js';
-import { selectedModel } from './_lib/model-options.js';
-import { bump } from './_lib/usage.js';
+import { route, ok, allowMethods, readJson, HttpError, extractJSON } from './util.js';
+import { requireUser } from './auth.js';
+import { ask, configured, MODELS } from './providers.js';
+import { selectedModel } from './model-options.js';
+import { bump } from './usage.js';
 
 const TYPES = ['co_quan_nha_nuoc', 'bao_chi_tu_viet', 'bai_pr_thong_cao', 'website_thuong_hieu', 'doi_tac_khach_hang', 'mang_xa_hoi', 'danh_ba_khac'];
 const key = u => { try { const x = new URL(u); return (x.hostname.replace(/^www\./, '') + x.pathname.replace(/\/+$/, '')).toLowerCase(); } catch { return ''; } };

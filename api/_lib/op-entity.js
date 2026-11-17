@@ -1,6 +1,6 @@
-import { route, ok, allowMethods, readJson, HttpError } from './_lib/util.js';
-import { requireUser } from './_lib/auth.js';
-import { bump } from './_lib/usage.js';
+import { route, ok, allowMethods, readJson, HttpError } from './util.js';
+import { requireUser } from './auth.js';
+import { bump } from './usage.js';
 
 // Wikimedia yêu cầu User-Agent có thông tin liên hệ.
 const UA = 'NetSpace-CheckAI/1.0 (https://checkai.netspace.vn)';

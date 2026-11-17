@@ -1,6 +1,6 @@
-import { route, ok, fail, allowMethods, readJson, assertCsrf, getIp, HttpError } from './_lib/util.js';
-import { authPassword } from './_lib/supabase.js';
-import { isAllowed, setSession } from './_lib/auth.js';
+import { route, ok, fail, allowMethods, readJson, assertCsrf, getIp, HttpError } from './util.js';
+import { authPassword } from './supabase.js';
+import { isAllowed, setSession } from './auth.js';
 
 const BAD = 'Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được cấp quyền.';
 const tries = new Map(); // làm chậm thử mật khẩu hàng loạt (best-effort theo từng instance)

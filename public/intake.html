@@ -91,7 +91,7 @@ async function init(){
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-ai]");if(!b||aiLeft<=0)return;const kind=b.dataset.ai;
   if((kind==="topics"||kind==="scenarios")&&$("#f_"+kind).value.trim()&&!confirm("Gợi ý của AI sẽ thay nội dung đang có trong ô này. Tiếp tục?"))return;
   const old=b.textContent;b.disabled=true;b.textContent="AI đang soạn…";msg("");
-  try{const r=await call("/api/intake-ai",{method:"POST",body:{kind,...collect()}});setAiLeft(r.aiLeft);
+  try{const r=await call("/api/intake?op=ai",{method:"POST",body:{kind,...collect()}});setAiLeft(r.aiLeft);
     if(kind==="competitors"){const have=new Set([...document.querySelectorAll(".cn")].map(i=>i.value.trim().toLowerCase()));$("#compSugg").innerHTML=r.items.filter(x=>!have.has(x.name.toLowerCase())).map(x=>`<button type="button" data-add="${esc(x.name)}" title="${esc(x.reason)}">+ ${esc(x.name)}</button>`).join("")||'<span class="hint">AI không có gợi ý mới.</span>';
       if(r.items.length)msg("Bấm vào tên để thêm. Gợi ý của AI có thể chưa chính xác, hãy kiểm tra lại.")}
     else $("#f_"+kind).value=r.items.join("\n")}

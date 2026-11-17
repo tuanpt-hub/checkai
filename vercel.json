@@ -3,29 +3,87 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "functions": {
-    "api/probe.js": { "maxDuration": 120 },
-    "api/claude.js": { "maxDuration": 120 },
-    "api/scan.js": { "maxDuration": 60 },
-    "api/entity.js": { "maxDuration": 30 },
-    "api/verify-claim.js": { "maxDuration": 120 },
-    "api/intake-ai.js": { "maxDuration": 60 }
+    "api/probe.js": {
+      "maxDuration": 120
+    },
+    "api/claude.js": {
+      "maxDuration": 120
+    },
+    "api/scan.js": {
+      "maxDuration": 120
+    },
+    "api/intake.js": {
+      "maxDuration": 60
+    }
   },
+  "rewrites": [
+    {
+      "source": "/api/login",
+      "destination": "/api/me?op=login"
+    },
+    {
+      "source": "/api/logout",
+      "destination": "/api/me?op=logout"
+    },
+    {
+      "source": "/api/entity",
+      "destination": "/api/scan?op=entity"
+    },
+    {
+      "source": "/api/verify-claim",
+      "destination": "/api/scan?op=claim"
+    },
+    {
+      "source": "/api/intake-ai",
+      "destination": "/api/intake?op=ai"
+    },
+    {
+      "source": "/api/intake-submissions",
+      "destination": "/api/intake-links?op=subs"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "no-referrer" },
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        }
       ]
     },
     {
       "source": "/api/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
     }
   ]
 }

@@ -36,9 +36,13 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 
 export async function startServer(port = Number(process.env.PORT) || 3000) {
   const routes = collectRoutes(path.join(root, 'api'));
+  const rewrites = (JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8')).rewrites || []);
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname.startsWith('/api/')) {
+      // Giống rewrites trong vercel.json: giữ đường dẫn API cũ, ghép query của đích và của yêu cầu gốc.
+      const rw = rewrites.find((r) => r.source === url.pathname);
+      if (rw) { const d = new URL(rw.destination, url); url.searchParams.forEach((v, k) => d.searchParams.set(k, v)); url.pathname = d.pathname; url.search = d.search; }
       for (const r of routes) {
         const m = url.pathname.match(r.re);
         if (!m) continue;

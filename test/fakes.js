@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // Máy chủ giả lập Supabase, Anthropic, OpenAI, Gemini để kiểm thử cục bộ – KHÔNG dùng khóa thật.
 import http from 'node:http';
 
@@ -22,6 +23,21 @@ function judgeJSON(prompt) {
     return { id, mentioned: on, code: on ? 2 : 0, evidence: on ? 'NetSpace là công ty công nghệ và truyền thông' : '', note: on ? 'Được nhắc' : 'Không nhắc',
       brands: on ? [{ name: 'Dinos', rank: 1, sentiment: 'tich_cuc' }, { name: 'NetSpace', rank: 2, sentiment: 'trung_tinh' }] : [{ name: 'Dinos', rank: 1, sentiment: 'tich_cuc' }, { name: 'UpBase', rank: 2 }, { name: 'Melive', rank: 3 }] };
   }));
+}
+function itemsJSON(prompt) {
+  if (prompt.includes('"ly_do"')) return JSON.stringify({ items: [{ name: 'Dinos', ly_do: 'MCN lớn tại Việt Nam' }, { name: 'Yeah1', ly_do: 'Mạng lưới nội dung số' }, { name: 'METUB', ly_do: 'MCN đa nền tảng' }] });
+  const n = prompt.includes('20 tình huống') ? 20 : 10;
+  return JSON.stringify({ items: Array.from({ length: n }, (_, i) => (n === 20 ? 'Tình huống mua hàng gợi ý ' : 'Chủ đề gợi ý ') + (i + 1)) });
+}
+function scoreJSON(prompt) {
+  const part = prompt.slice(prompt.indexOf('TIÊU CHÍ CẦN CHẤM'), prompt.indexOf('DỮ KIỆN:'));
+  const ids = [...part.matchAll(/^- (\d\.\d) /gm)].map((m) => m[1]);
+  return JSON.stringify(ids.map((id) => (/\.[45]$/.test(id) ? { id, score: null, confidence: 'thap', reason: 'Không đủ dữ kiện', missing: 'Cần dữ liệu bên ngoài (giả lập)' } : { id, score: 2, confidence: 'trung_binh', reason: 'Căn cứ giả lập từ dữ kiện', missing: '' })));
+}
+function planJSON() {
+  return JSON.stringify({ items: [
+    { title: 'Mở quyền cho bot tìm kiếm AI', criteria: ['1.1'], why: 'GPTBot bị chặn (giả lập).', steps: ['Sửa robots.txt', 'Mở tường lửa'], owner: 'Tech', effort: 'Nhỏ', impact: 'Cao', timeframe: '0–30 ngày', kpi: 'Quét lại: 0 bot bị chặn' },
+    { title: 'Chuẩn hóa tên gọi', criteria: ['2.1', '4.6'], why: 'Nhiều biến thể tên (giả lập).', steps: ['Ban hành Brand Truth Sheet'], owner: 'Brand', effort: 'Vừa', impact: 'Cao', timeframe: '31–60 ngày', kpi: 'Tỷ lệ AI nhắc khi hỏi tên' }] });
 }
 function variantsJSON(prompt) {
   const out = {};
@@ -61,7 +77,7 @@ export function startFakeWiki() {
 }
 
 export async function startFakes() {
-  const db = { audits: new Map(), usage: new Map(), sessions: new Map() };
+  const db = { audits: new Map(), usage: new Map(), sessions: new Map(), intake_links: new Map(), intake_submissions: new Map() };
 
   const supabase = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x');
@@ -97,6 +113,28 @@ export async function startFakes() {
       if (!k.startsWith('sb_secret_') && !k.startsWith('eyJ')) return send(res, 401, { message: 'secret key required' });
       if (k.startsWith('sb_secret_') && req.headers.authorization) return send(res, 401, { message: 'Invalid JWT' }); // khóa mới không được gửi ở Authorization
       const rest = p.slice('/rest/v1/'.length);
+      if (rest === 'intake_links' || rest === 'intake_submissions') {
+        // Bảng chung kiểu PostgREST: lọc col=eq.x / lt.x, sắp xếp, chèn, sửa.
+        const t = db[rest];
+        const filters = [...url.searchParams].filter(([k]) => !['select', 'order', 'limit'].includes(k)).map(([k, v]) => [k, v.slice(0, v.indexOf('.')), v.slice(v.indexOf('.') + 1)]);
+        const match = (row) => filters.every(([k, op, val]) => (op === 'eq' ? String(row[k]) === val : op === 'lt' ? Number(row[k]) < Number(val) : true));
+        if (req.method === 'GET') {
+          let rows = [...t.values()].filter(match);
+          const ord = url.searchParams.get('order'); if (ord) { const [col, dir] = ord.split('.'); rows.sort((a, b) => (String(a[col]) < String(b[col]) ? -1 : 1) * (dir === 'desc' ? -1 : 1)); }
+          return send(res, 200, rows.slice(0, Number(url.searchParams.get('limit')) || 1000));
+        }
+        if (req.method === 'POST') {
+          const b = await readBody(req);
+          if (!db.audits.has(b.audit_id)) return send(res, 409, { code: '23503', message: 'foreign key violation' });
+          if (rest === 'intake_links' && [...t.values()].some((r) => r.token_hash === b.token_hash)) return send(res, 409, { code: '23505' });
+          const row = rest === 'intake_links' ? { id: crypto.randomUUID(), created_at: new Date().toISOString(), revoked: false, ai_calls: 0, submissions: 0, last_used_at: null, ...b }
+            : { id: crypto.randomUUID(), submitted_at: new Date().toISOString(), status: 'pending', reviewed_by: null, reviewed_at: null, ...b };
+          t.set(row.id, row); return send(res, 201, [row]);
+        }
+        if (req.method === 'PATCH') {
+          const b = await readBody(req); const rows = [...t.values()].filter(match); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows);
+        }
+      }
       if (rest === 'rpc/bump_usage') {
         const b = await readBody(req); const key = b.p_email.toLowerCase() + '|' + b.p_day;
         const n = (db.usage.get(key) || 0) + b.p_n; db.usage.set(key, n); return send(res, 200, n);
@@ -145,7 +183,7 @@ export async function startFakes() {
         { type: 'web_search_tool_result', tool_use_id: 's1', content: [{ type: 'web_search_result', url: 'https://vtv.vn/a', title: 'VTV' }, { type: 'web_search_result', url: 'https://znews.vn/b', title: 'Znews' }] },
         { type: 'text', text: answerFor(prompt), citations: [{ type: 'web_search_result_location', url: 'https://vtv.vn/a', title: 'VTV' }] }] });
     }
-    const text = prompt.includes('Viết lại mỗi tình huống') ? variantsJSON(prompt) : prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
+    const text = prompt.includes('Viết lại mỗi tình huống') ? variantsJSON(prompt) : prompt.includes('"timeframe"') ? planJSON(prompt) : prompt.includes('"confidence"') ? scoreJSON(prompt) : prompt.includes('{"items"') ? itemsJSON(prompt) : prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
     send(res, 200, { stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20 }, content: [{ type: 'text', text: prompt.includes('JSON') ? '```json\n' + text + '\n```' : text }] });
   });
 
