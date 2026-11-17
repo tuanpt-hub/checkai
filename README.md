@@ -113,6 +113,20 @@ Số lượt gọi cho một audit đầy đủ, 3 AI, lặp 1 lần: **123 lư�
 - Giám khảo chấm điểm là Claude, nên có thể thiên vị với câu trả lời của chính Claude. Xem lại các ô quan trọng bằng mắt trước khi gửi báo cáo cho khách.
 - Prompt hỏi mặc định chỉ yêu cầu “trả lời tiếng Việt, ngắn gọn” để gần với người dùng thật; đổi bằng biến `PROBE_SYSTEM`.
 
+## Số hàm máy chủ (gói Vercel Hobby)
+
+Gói **Hobby** của Vercel cho tối đa **12 hàm máy chủ** mỗi lần deploy; vượt mức thì deploy bị từ chối (`exceeded_serverless_functions_per_deployment`). Các thao tác được gộp còn **8 hàm**, chọn thao tác bằng `?op=`:
+
+| Hàm | Thao tác |
+|---|---|
+| `api/me.js` | `?op=me` (mặc định), `?op=login`, `?op=logout` |
+| `api/scan.js` | `?op=scan` (mặc định), `?op=entity`, `?op=claim` |
+| `api/intake.js` | form công khai (mặc định), `?op=ai` |
+| `api/intake-links.js` | `?op=links` (mặc định), `?op=subs` |
+| `api/probe.js`, `api/claude.js`, `api/audits/index.js`, `api/audits/[id].js` | như cũ |
+
+Mã xử lý từng thao tác nằm ở `api/_lib/op-*.js` (thư mục bắt đầu bằng `_` không bị Vercel tính là hàm). Đường dẫn cũ (`/api/login`, `/api/logout`, `/api/entity`, `/api/verify-claim`, `/api/intake-ai`, `/api/intake-submissions`) vẫn chạy nhờ `rewrites` trong `vercel.json`. `npm test` có bước `test/vercel-config.mjs` chặn trước việc vượt 12 hàm hoặc cấu hình `functions` trỏ tới tệp không tồn tại.
+
 ## Quy trình audit 6 bước
 
 1. **Hồ sơ thương hiệu** – dữ kiện chuẩn do thương hiệu cung cấp, chủ đề, tình huống mua hàng và **đối thủ cạnh tranh** (nhập tay, nhờ AI gợi ý theo ngành, hoặc duyệt thương hiệu AI đã nêu sau bước Hỏi AI). Có thể **gửi link riêng cho thương hiệu tự nhập** (xem dưới).
