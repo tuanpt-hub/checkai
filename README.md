@@ -113,6 +113,18 @@ Số lượt gọi cho một audit đầy đủ, 3 AI, lặp 1 lần: **123 lư�
 - Giám khảo chấm điểm là Claude, nên có thể thiên vị với câu trả lời của chính Claude. Xem lại các ô quan trọng bằng mắt trước khi gửi báo cáo cho khách.
 - Prompt hỏi mặc định chỉ yêu cầu “trả lời tiếng Việt, ngắn gọn” để gần với người dùng thật; đổi bằng biến `PROBE_SYSTEM`.
 
+## AI Trust Blueprint – 5 trụ cột (đợt 1)
+
+Bước 6 "Công cụ cải thiện" trả lời câu hỏi: **cần thay đổi gì ở Brand, Content, PR, Data và Technology để thương hiệu thành lựa chọn đáng tin cậy trong môi trường AI**. Bản đồ và trạng thái đích do đội chuyên gia NetSpace duyệt ngày 18/11/2026; dữ liệu nằm ở `public/pillars.js` (khớp sheet "5 trụ cột" của Workbook và mục 3 sổ tay vận hành).
+
+- **Điểm và mức 5 trụ cột** (tức thì, không tốn AI): điểm = trung bình tiêu chí đòn bẩy đã chấm, quy về thang 100; chỉ xếp mức (Rời rạc · Chuẩn hóa · Kiểm chứng · Dẫn dắt) khi đã chấm từ 2/3 tiêu chí. Mức đích mặc định 80, chỉnh được theo ngành kèm lý do (đưa vào báo cáo). Tự cảnh báo thứ tự ưu tiên khi Data/Technology hoặc Brand dưới 60.
+- **6 chỉ số kết quả**: 1.6, 3.5, 5.6, 6.2, 6.3 và share of voice, đo trực tiếp từ dữ liệu Hỏi AI; xét đạt theo tỷ lệ đo được, cảnh báo khi cận dưới khoảng tin cậy 95% thấp hơn mức đích.
+- **Chẩn đoán "từ → sang"** ở 4 tầng (tài sản, quy trình, con người và quy chế, hệ thống): AI soạn mỗi trụ cột chưa đạt đích 1 lượt gọi; đề xuất không gắn mã tiêu chí của chính trụ cột hoặc thiếu căn cứ bị loại.
+- **Kế hoạch hành động** gắn nhãn trụ cột, xem theo thời gian hoặc theo trụ cột.
+- **Xuất "AI Trust Blueprint" (.md)** và mục tương ứng trong báo cáo audit.
+
+Kiểm thử: `node test/pillars.mjs` (trong `npm test`) và `python3 test/ui-blueprint.py` (cần `npm run dev:fake`).
+
 ## Số hàm máy chủ (gói Vercel Hobby)
 
 Gói **Hobby** của Vercel cho tối đa **12 hàm máy chủ** mỗi lần deploy; vượt mức thì deploy bị từ chối (`exceeded_serverless_functions_per_deployment`). Các thao tác được gộp còn **8 hàm**, chọn thao tác bằng `?op=`:
