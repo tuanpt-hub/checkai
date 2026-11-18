@@ -24,6 +24,15 @@ function judgeJSON(prompt) {
       brands: on ? [{ name: 'Dinos', rank: 1, sentiment: 'tich_cuc' }, { name: 'NetSpace', rank: 2, sentiment: 'trung_tinh' }] : [{ name: 'Dinos', rank: 1, sentiment: 'tich_cuc' }, { name: 'UpBase', rank: 2 }, { name: 'Melive', rank: 3 }] };
   }));
 }
+function blueprintJSON(prompt) {
+  const part = prompt.slice(prompt.indexOf('TIÊU CHÍ ĐÒN BẨY'), prompt.indexOf('Yêu cầu:'));
+  const ids = [...part.matchAll(/^- (\d\.\d) /gm)].map((m) => m[1]);
+  return JSON.stringify({ hien_trang: 'Hiện trạng giả lập dựa trên dữ kiện.', rui_ro: 'AI tiếp tục mô tả sai (giả lập).', thay_doi: [
+    { tang: 'quy_trinh', tu: 'Chưa có quy trình', sang: 'Có quy trình duyệt hằng tháng', criteria: [ids[0]], can_cu: 'Dữ kiện giả lập cho ' + ids[0], viec_dau_tien: 'Họp chốt quy trình', phu_trach: 'Lãnh đạo' },
+    { tang: 'tai_san', tu: 'Thiếu tài sản', sang: 'Có tài sản chuẩn', criteria: [ids[1] || ids[0]], can_cu: 'Dữ kiện giả lập', viec_dau_tien: 'Soạn bản nháp', phu_trach: 'Brand' },
+    { tang: 'he_thong', tu: 'x', sang: 'y', criteria: ['9.9'], can_cu: 'mã không tồn tại – phải bị loại' },
+    { tang: 'con_nguoi', tu: 'x', sang: 'y', criteria: [ids[0]], can_cu: '' }] });
+}
 function itemsJSON(prompt) {
   if (prompt.includes('"ly_do"')) return JSON.stringify({ items: [{ name: 'Dinos', ly_do: 'MCN lớn tại Việt Nam' }, { name: 'Yeah1', ly_do: 'Mạng lưới nội dung số' }, { name: 'METUB', ly_do: 'MCN đa nền tảng' }] });
   const n = prompt.includes('20 tình huống') ? 20 : 10;
@@ -183,7 +192,7 @@ export async function startFakes() {
         { type: 'web_search_tool_result', tool_use_id: 's1', content: [{ type: 'web_search_result', url: 'https://vtv.vn/a', title: 'VTV' }, { type: 'web_search_result', url: 'https://znews.vn/b', title: 'Znews' }] },
         { type: 'text', text: answerFor(prompt), citations: [{ type: 'web_search_result_location', url: 'https://vtv.vn/a', title: 'VTV' }] }] });
     }
-    const text = prompt.includes('Viết lại mỗi tình huống') ? variantsJSON(prompt) : prompt.includes('"timeframe"') ? planJSON(prompt) : prompt.includes('"confidence"') ? scoreJSON(prompt) : prompt.includes('{"items"') ? itemsJSON(prompt) : prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
+    const text = prompt.includes('"tang"') ? blueprintJSON(prompt) : prompt.includes('Viết lại mỗi tình huống') ? variantsJSON(prompt) : prompt.includes('"timeframe"') ? planJSON(prompt) : prompt.includes('"confidence"') ? scoreJSON(prompt) : prompt.includes('{"items"') ? itemsJSON(prompt) : prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
     send(res, 200, { stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20 }, content: [{ type: 'text', text: prompt.includes('JSON') ? '```json\n' + text + '\n```' : text }] });
   });
 
