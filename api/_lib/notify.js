@@ -11,7 +11,8 @@ export async function telegram(text) {
   if (!token || !chat) return { sent: false, reason: 'not_configured' };
   const base = (process.env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/$/, '');
   try {
-    const r = await httpJSON(`${base}/bot${token}/sendMessage`, { body: { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true }, timeoutMs: 8000, retries: 1 });
+    // Telegram chỉ đọc nội dung khi có Content-Type JSON (thiếu thì báo "message text is empty").
+    const r = await httpJSON(`${base}/bot${token}/sendMessage`, { headers: { 'Content-Type': 'application/json' }, body: { chat_id: chat, text: text.slice(0, 4000), parse_mode: 'HTML', disable_web_page_preview: true }, timeoutMs: 8000, retries: 1 });
     if (r.status !== 200) console.error('[notify] telegram', r.status, String(r.text || '').slice(0, 200));
     return { sent: r.status === 200 };
   } catch (e) { console.error('[notify] telegram', e && e.message); return { sent: false }; }
