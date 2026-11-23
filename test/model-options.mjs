@@ -15,7 +15,16 @@ const models={claude:options.claude[0].id,openai:options.openai[0].id,gemini:opt
 const config={groups:[{id:'B',count:6},{id:'C',count:5},{id:'T',count:10},{id:'S',count:20}],engines:['claude','openai','gemini'],reps:1,web:true,models,options};
 const estimate=CheckAICost.estimate;
 const a=estimate(config);assert.equal(a.calls,123);assert.equal(a.judgeCalls,21);assert.ok(a.high>a.low&&a.low>0);
-const twice=estimate({...config,reps:2});assert.equal(twice.high,a.high*2);
+const twice=estimate({...config,reps:2});
+// Grok và DeepSeek: chỉ qua Gateway, có giá để ước tính chi phí, chặn model ngoài danh sách
+assert.equal(options.grok[0].id,'spacexai/grok-4.20-non-reasoning');assert.equal(options.grok[0].search,5);
+assert.equal(options.deepseek[0].id,'deepseek/deepseek-v4.1-flash');assert.equal(options.deepseek[0].search,.75);
+assert.equal(selectedModel('grok','spacexai/grok-4.7',defaults),'spacexai/grok-4.7');
+assert.throws(()=>selectedModel('deepseek','spacexai/grok-4.7',defaults),e=>e.code==='bad_model');
+assert.ok(!options.judge.some(o=>/^(spacexai|deepseek)\//.test(o.id)),'judge stays on Claude/OpenAI/Gemini');
+const five=estimate({...config,engines:['claude','openai','gemini','grok','deepseek'],models:{...models,grok:options.grok[0].id,deepseek:options.deepseek[0].id}});
+assert.equal(five.calls,205);assert.deepEqual(five.missing,[]);assert.ok(five.high>a.high);
+assert.equal(twice.high,a.high*2);
 assert.ok(estimate({...config,web:false}).high<a.high);
 assert.ok(estimate({...config,models:{...models,openai:'openai/gpt-6-astra'}}).high>a.high);
 assert.equal(estimate({...config,engines:[]}).high,0);
@@ -25,5 +34,6 @@ assert.equal(estimate({...config,groups:[{id:'B',count:0}]}).high,0);
 process.env.AI_GATEWAY_JUDGE_MODEL='anthropic/custom';assert.equal(modelOptions(MODELS()).judge.at(-1).input,null);
 delete process.env.AI_GATEWAY_API_KEY;
 assert.equal(modelOptions(MODELS()).openai.length,1);
+assert.deepEqual(modelOptions(MODELS()).grok,[]);assert.deepEqual(modelOptions(MODELS()).deepseek,[]);
 assert.throws(()=>selectedModel('openai','openai/gpt-5-mini',MODELS()),e=>e.code==='bad_model');
 console.log('Model allowlist and cost estimates: batching, repetitions, web, models, unknown pricing and direct API passed.');

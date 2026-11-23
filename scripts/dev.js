@@ -32,13 +32,25 @@ function collectRoutes(dir, prefix = '/api') {
   return out;
 }
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.txt': 'text/plain', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const MIME = { '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.xml': 'application/xml', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.txt': 'text/plain', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 export async function startServer(port = Number(process.env.PORT) || 3000) {
   const routes = collectRoutes(path.join(root, 'api'));
   const rewrites = (JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8')).rewrites || []);
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    // Rewrite theo tên miền từ đường dẫn thường sang hàm /api (vd. brand.ai.vn/r/<mã> → /api/hc?op=page&t=<mã>).
+    if (!url.pathname.startsWith('/api/')) {
+      const host = String(process.env.DEV_HOST || req.headers['x-forwarded-host'] || req.headers.host || '').replace(/:\d+$/, '');
+      for (const r of rewrites) {
+        if (!r.destination.startsWith('/api/') || r.source.startsWith('/api/')) continue;
+        if ((r.has || []).some((c) => c.type === 'host' && c.value !== host)) continue;
+        const keys = [], re = new RegExp('^' + r.source.replace(/:([a-z]+)/gi, (_, k) => { keys.push(k); return '([^/]+)'; }) + '$');
+        const m = url.pathname.match(re); if (!m) continue;
+        let dest = r.destination; keys.forEach((k, i) => { dest = dest.replace(':' + k, encodeURIComponent(m[i + 1])); });
+        const d = new URL(dest, url); url.pathname = d.pathname; url.search = d.search; break;
+      }
+    }
     if (url.pathname.startsWith('/api/')) {
       // Giống rewrites trong vercel.json: giữ đường dẫn API cũ, ghép query của đích và của yêu cầu gốc.
       const rw = rewrites.find((r) => r.source === url.pathname);
@@ -54,10 +66,23 @@ export async function startServer(port = Number(process.env.PORT) || 3000) {
       res.statusCode = 404;
       return res.end(JSON.stringify({ error: { code: 'not_found' } }));
     }
-    let file = path.join(root, 'public', url.pathname === '/' ? 'index.html' : url.pathname);
-    // Giống cleanUrls của Vercel: /intake → public/intake.html
-    if (!path.extname(file) && fs.existsSync(file + '.html')) file += '.html';
-    if (!file.startsWith(path.join(root, 'public')) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+    // Giống Vercel: tệp có thật được ưu tiên; nếu không có thì áp rewrites (kể cả điều kiện tên miền "has: host").
+    const pub = path.join(root, 'public');
+    const resolve = (p) => { let f = path.join(pub, p); if (!path.extname(f) && fs.existsSync(f + '.html')) f += '.html'; return f.startsWith(pub) && fs.existsSync(f) && fs.statSync(f).isFile() ? f : null; };
+    let file = url.pathname === '/' ? null : resolve(url.pathname);
+    if (!file) {
+      const host = String(process.env.DEV_HOST || req.headers['x-forwarded-host'] || req.headers.host || '').replace(/:\d+$/, '');
+      for (const r of rewrites) {
+        if (r.source.startsWith('/api/')) continue;
+        if ((r.has || []).some((c) => c.type === 'host' && c.value !== host)) continue;
+        if ((r.missing || []).some((c) => c.type === 'host' && c.value === host)) continue;
+        const keys = [], re = new RegExp('^' + r.source.replace(/:([a-z]+)\*/gi, (_, k) => { keys.push(k); return '(.*)'; }).replace(/:([a-z]+)/gi, (_, k) => { keys.push(k); return '([^/]+)'; }) + '$');
+        const m = url.pathname.match(re); if (!m) continue;
+        let dest = r.destination; keys.forEach((k, i) => { dest = dest.replace(':' + k + '*', m[i + 1]).replace(':' + k, m[i + 1]); });
+        file = resolve(new URL(dest, url).pathname); break;
+      }
+    }
+    if (!file) {
       res.statusCode = 404;
       return res.end('Not found');
     }

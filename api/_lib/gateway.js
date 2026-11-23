@@ -1,8 +1,9 @@
 import { generateText, stepCountIs } from 'ai';
-import { createGateway } from '@ai-sdk/gateway';
+import { createGateway, gateway as gatewayProvider } from '@ai-sdk/gateway';
 import { anthropic } from '@ai-sdk/anthropic';
 import { openai } from '@ai-sdk/openai';
 import { google } from '@ai-sdk/google';
+import { xai } from '@ai-sdk/xai';
 import { HttpError, envInt } from './util.js';
 import { gatewayFailure } from './gateway-errors.js';
 import { searchLocation } from './search-location.js';
@@ -13,7 +14,11 @@ export const gatewayModels = () => ({
   judge: process.env.AI_GATEWAY_JUDGE_MODEL || 'anthropic/claude-sonnet-5.5',
   openai: process.env.AI_GATEWAY_OPENAI_MODEL || 'openai/gpt-6-astra',
   gemini: process.env.AI_GATEWAY_GEMINI_MODEL || 'google/gemini-3.6-flash',
+  grok: process.env.AI_GATEWAY_GROK_MODEL || 'spacexai/grok-4.20-non-reasoning',
+  deepseek: process.env.AI_GATEWAY_DEEPSEEK_MODEL || 'deepseek/deepseek-v4.1-flash',
 });
+// Grok và DeepSeek chỉ chạy qua AI Gateway (không có cấu hình khóa trực tiếp).
+export const GATEWAY_ONLY = ['grok', 'deepseek'];
 
 export function searchTools(engine) {
   if (engine === 'claude') return { web_search: anthropic.tools.webSearch_20250305({
@@ -21,11 +26,17 @@ export function searchTools(engine) {
   }) };
   if (engine === 'openai') return { web_search: openai.tools.webSearch({ userLocation: searchLocation(engine) }) };
   if (engine === 'gemini') return { google_search: google.tools.googleSearch({}) };
+  // Grok dùng tìm kiếm web gốc của SpaceXAI, giống cách ứng dụng Grok trả lời người dùng.
+  if (engine === 'grok') return { web_search: xai.tools.webSearch({}) };
+  // DeepSeek không có tìm kiếm gốc qua API; dùng DeepSeek Search của AI Gateway (cùng hệ DeepSeek).
+  if (engine === 'deepseek') return { deepseek_search: gatewayProvider.tools.deepseekSearch({ count: envInt('DEEPSEEK_SEARCH_COUNT', 8) }) };
   throw new HttpError(400, 'bad_engine', 'AI không được hỗ trợ.');
 }
 
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch { return ''; } };
+
 export function normalizeGateway(result) {
-  const sources = new Map(), queries = new Set();
+  const sources = new Map(), queries = new Set(), retrieved = new Map();
   for (const step of result.steps || [result]) {
     for (const s of step.sources || []) {
       if (s.sourceType === 'url' && /^https?:\/\//i.test(s.url)) {
@@ -41,10 +52,22 @@ export function normalizeGateway(result) {
       const action = tr.output?.action;
       if (typeof action?.query === 'string') queries.add(action.query.slice(0, 200));
       for (const q of action?.queries || []) queries.add(String(q).slice(0, 200));
+      // Công cụ tìm kiếm của Gateway (DeepSeek Search) trả kết quả trong tool result, không qua sources.
+      const items = Array.isArray(tr.output?.results) ? tr.output.results : Array.isArray(tr.output) ? tr.output : [];
+      for (const it of items.slice(0, 30)) {
+        const url = typeof it?.url === 'string' ? it.url : '';
+        if (/^https?:\/\//i.test(url) && !retrieved.has(url)) retrieved.set(url, { url, title: String(it.title || '').slice(0, 200) });
+      }
     }
   }
+  const text = String(result.text || '').trim(), lower = text.toLowerCase();
+  // Nguồn chỉ được tìm thấy (không do nhà cung cấp gắn trích dẫn) coi là trích dẫn khi câu trả lời nhắc tới tên miền.
+  for (const r of retrieved.values()) if (!sources.has(r.url)) {
+    const host = hostOf(r.url);
+    sources.set(r.url, { ...r, cited: !!host && (lower.includes(host) || lower.includes(r.url.toLowerCase())) });
+  }
   const u = result.totalUsage || result.usage || {};
-  return { text: String(result.text || '').trim(), sources: [...sources.values()], queries: [...queries],
+  return { text, sources: [...sources.values()], queries: [...queries],
     truncated: result.finishReason === 'length',
     usage: { in: u.inputTokens || 0, out: u.outputTokens || 0, searches: queries.size } };
 }

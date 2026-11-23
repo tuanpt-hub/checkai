@@ -1,0 +1,14 @@
+# brand.ai.vn
+
+> brand.ai.vn là dịch vụ AI Brand Readiness của NetSpace (Công ty Cổ phần Công nghệ & Truyền thông Không Gian Số). Dịch vụ đo và nâng mức sẵn sàng của thương hiệu trên các nền tảng AI (ChatGPT, Gemini, Claude, Grok, DeepSeek, Perplexity) qua 6 lớp, 36 tiêu chí: Tìm thấy, Nhận diện đúng, Hiểu đúng, Kiểm chứng được, Có thẩm quyền, Được đề xuất.
+
+## Dịch vụ
+- [AI Health Check miễn phí](https://brand.ai.vn/kiem-tra): hỏi 6 câu về thương hiệu trên từng nền tảng AI và quét kỹ thuật website; kết quả sau 2–3 phút.
+- AI Brand Audit: audit đầy đủ 6 lớp, 36 tiêu chí, so sánh với đối thủ, AI Trust Blueprint 5 trụ cột (Brand, Content, PR, Data, Technology); khoảng 10 ngày làm việc.
+- Transformation: triển khai thay đổi theo AI Trust Blueprint trong 90 ngày, đo lại ở ngày 60 và 90.
+- Intelligence: theo dõi hằng tháng những gì AI nói về thương hiệu và đối thủ.
+
+## Liên hệ
+- [Đặt lịch tư vấn](https://brand.ai.vn/#dat-lich)
+- Trụ sở chính: Tầng 3, Tòa nhà Mipec, 229 Tây Sơn, Phường Kim Liên, Hà Nội
+- Văn phòng đại diện: DD1 - DD1A Bạch Mã, Phường Hòa Hưng, Quận 10, TP. Hồ Chí Minh

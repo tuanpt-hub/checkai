@@ -4,10 +4,10 @@ import { requireUser } from './_lib/auth.js';
 import { ask, configured, PROBE_SYSTEM, MODELS } from './_lib/providers.js';
 import { bump } from './_lib/usage.js';
 
-const ENGINES = ['claude', 'openai', 'gemini'];
+const ENGINES = ['claude', 'openai', 'gemini', 'grok', 'deepseek'];
 // Trần token đầu ra mỗi lượt hỏi. OpenAI và Gemini tính cả token suy luận vào mức này,
 // nên cần rộng hơn Claude (Claude giữ 1500 để không tăng chi phí). Đổi bằng PROBE_MAX_TOKENS_<ENGINE>.
-const PROBE_MAX_TOKENS = { claude: 1500, openai: 4000, gemini: 4096 };
+const PROBE_MAX_TOKENS = { claude: 1500, openai: 4000, gemini: 4096, grok: 3000, deepseek: 4000 };
 
 /** Hỏi MỘT câu hỏi tới MỘT AI (cuộc trò chuyện mới, không lịch sử). */
 export default route(async (req, res) => {

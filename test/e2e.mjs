@@ -45,7 +45,7 @@ await t('đăng nhập đúng → cookie HttpOnly, /api/me hợp lệ', async ()
   assert.equal(r.status, 200); assert.ok(jar.abr_at && jar.abr_rt);
   const raw = r.headers.getSetCookie().join('\n'); assert.match(raw, /HttpOnly/); assert.match(raw, /SameSite=Strict/);
   const me = await api('/api/me'); assert.equal(me.status, 200); assert.equal(me.json.email, 'staff@netspace.vn');
-  assert.deepEqual(me.json.engines, { claude: true, openai: true, gemini: true });
+  assert.deepEqual(me.json.engines, { claude: true, openai: true, gemini: true, grok: false, deepseek: false });
   assert.equal(JSON.stringify(me.json).includes('test-'), false, 'không lộ khóa API');
 });
 await t('hết access token → tự làm mới bằng refresh token', async () => { delete jar.abr_at; const me = await api('/api/me'); assert.equal(me.status, 200); assert.ok(jar.abr_at); });
@@ -59,6 +59,9 @@ for (const eng of ['claude', 'openai', 'gemini']) {
   });
 }
 await t('probe: engine/prompt sai → 400', async () => { assert.equal((await api('/api/probe', { method: 'POST', body: { engine: 'x', prompt: 'abcd' } })).status, 400); assert.equal((await api('/api/probe', { method: 'POST', body: { engine: 'claude', prompt: 'a' } })).status, 400); });
+await t('probe grok/deepseek khi không có AI Gateway → 503, không tính lượt', async () => {
+  for (const engine of ['grok', 'deepseek']) { const r = await api('/api/probe', { method: 'POST', body: { engine, prompt: 'NetSpace là ai?' } }); assert.equal(r.status, 503); assert.equal(r.json.error.code, 'not_configured'); }
+});
 await t('claude: sinh JSON (bóc code fence) và văn bản', async () => {
   const j = await api('/api/claude', { method: 'POST', body: { prompt: 'Chỉ trả về JSON.\n[B1] Câu hỏi\n"knows"', json: true } });
   assert.equal(j.status, 200, JSON.stringify(j.json)); assert.ok(Array.isArray(j.json.json) && j.json.json[0].id === 'B1');

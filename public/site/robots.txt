@@ -1,0 +1,7 @@
+# brand.ai.vn: cho phép mọi bot tìm kiếm, kể cả bot AI (GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot, Google-Extended…)
+User-agent: *
+Allow: /
+Disallow: /r/
+Disallow: /api/
+
+Sitemap: https://brand.ai.vn/sitemap.xml

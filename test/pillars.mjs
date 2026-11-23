@@ -3,7 +3,7 @@ import fs from 'node:fs';
 await import('../public/pillars.js');
 const X = globalThis.CheckAIPillars;
 // Bản đồ đã duyệt: 31 đòn bẩy + 5 kết quả = 36, mỗi tiêu chí một trụ cột
-const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+const html = fs.readFileSync(new URL('../public/app.html', import.meta.url), 'utf8');
 const start = html.indexOf('[', html.indexOf('"criteria": ['));
 let depth = 0, end = start; for (; end < html.length; end++) { if (html[end] === '[') depth++; else if (html[end] === ']' && --depth === 0) break; }
 const model = JSON.parse(html.slice(start, end + 1));

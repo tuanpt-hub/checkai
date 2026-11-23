@@ -10,6 +10,13 @@ const v = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
 for (const k of Object.keys(v.functions || {})) assert.ok(fs.existsSync(path.join(root, k)), `vercel.json functions trỏ tới tệp không tồn tại: ${k}`);
 for (const r of v.rewrites || []) {
   const dest = new URL(r.destination, 'http://x').pathname;
+  if (!dest.startsWith('/api/')) {
+    // Rewrite tới trang tĩnh: tệp đích phải có thật, và nguồn không được trùng một tệp tĩnh (tệp có thật luôn được ưu tiên trên Vercel).
+    assert.ok(fs.existsSync(path.join(root, 'public', dest)) || fs.existsSync(path.join(root, 'public', dest + '.html')), `rewrite ${r.source} trỏ tới tệp không tồn tại: ${dest}`);
+    assert.ok(!dest.endsWith('.html'), `rewrite ${r.source}: dùng đường dẫn không đuôi .html (cleanUrls)`);
+    if (!r.source.includes(':')) assert.ok(!fs.existsSync(path.join(root, 'public', r.source === '/' ? 'index.html' : r.source)), `rewrite ${r.source} bị che bởi tệp tĩnh cùng tên`);
+    continue;
+  }
   assert.ok(fns.some((f) => '/' + f.replace(/\.js$/, '').replace(/\/index$/, '') === dest), `rewrite ${r.source} trỏ tới hàm không tồn tại: ${dest}`);
   assert.ok(!fns.some((f) => '/' + f.replace(/\.js$/, '') === r.source), `rewrite ${r.source} bị che bởi một hàm cùng tên`);
 }

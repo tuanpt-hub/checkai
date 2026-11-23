@@ -86,7 +86,7 @@ export function startFakeWiki() {
 }
 
 export async function startFakes() {
-  const db = { audits: new Map(), usage: new Map(), sessions: new Map(), intake_links: new Map(), intake_submissions: new Map() };
+  const db = { audits: new Map(), usage: new Map(), sessions: new Map(), intake_links: new Map(), intake_submissions: new Map(), leads: new Map(), health_checks: new Map(), health_check_answers: new Map() };
 
   const supabase = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x');
@@ -143,6 +143,45 @@ export async function startFakes() {
         if (req.method === 'PATCH') {
           const b = await readBody(req); const rows = [...t.values()].filter(match); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows);
         }
+      }
+      if (['leads', 'health_checks', 'health_check_answers'].includes(rest)) {
+        // Bảng kiểu PostgREST cho đợt A: lọc eq/gte/lt/in, sắp xếp, giới hạn, chèn (bỏ qua trùng), sửa trả bản ghi.
+        const t = db[rest];
+        const filters = [...url.searchParams].filter(([k]) => !['select', 'order', 'limit'].includes(k)).map(([k, v]) => [k, v.slice(0, v.indexOf('.')), v.slice(v.indexOf('.') + 1)]);
+        const val = (row, k) => (row[k] === null || row[k] === undefined ? '' : String(row[k]));
+        const match = (row) => filters.every(([k, op, v]) => op === 'eq' ? val(row, k) === v : op === 'gte' ? val(row, k) >= v : op === 'lt' ? val(row, k) < v
+          : op === 'in' ? v.replace(/^\(|\)$/g, '').split(',').includes(val(row, k)) : true);
+        if (req.method === 'GET') {
+          let rows = [...t.values()].filter(match);
+          const ord = url.searchParams.get('order'); if (ord) { const [col, dir] = ord.split('.'); rows.sort((a, b) => (val(a, col) < val(b, col) ? -1 : 1) * (dir === 'desc' ? -1 : 1)); }
+          return send(res, 200, rows.slice(0, Number(url.searchParams.get('limit')) || 1000).map((r) => ({ ...r })));
+        }
+        if (req.method === 'POST') {
+          const b = await readBody(req);
+          if (rest === 'health_check_answers' && [...t.values()].some((r) => r.hc_id === b.hc_id && r.qid === b.qid && r.engine === b.engine))
+            return (req.headers.prefer || '').includes('ignore-duplicates') ? send(res, 201, []) : send(res, 409, { code: '23505' });
+          if (rest === 'health_checks' && b.verify_hash && [...t.values()].some((r) => r.verify_hash === b.verify_hash)) return send(res, 409, { code: '23505' });
+          const now = new Date().toISOString();
+          const row = { id: crypto.randomUUID(), created_at: now, ...(rest === 'leads' ? { updated_at: now, status: 'new', utm: {} } : rest === 'health_checks' ? { status: 'pending', calls_used: 0, calls_limit: 0, engines: [] } : { sources: [] }), ...b };
+          t.set(row.id, row); return send(res, 201, [row]);
+        }
+        if (req.method === 'PATCH') {
+          const b = await readBody(req); const rows = [...t.values()].filter(match); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows.map((r) => ({ ...r })));
+        }
+      }
+      if (rest === 'rpc/hc_report_view') {
+        const b = await readBody(req); const h = [...db.health_checks.values()].find((r) => r.report_token === b.p_token && r.status === 'done');
+        if (!h) return send(res, 200, []);
+        db.report_views = db.report_views || [];
+        if (db.report_views.some((v) => v.hc_id === h.id && v.ip_hash === b.p_ip && Date.now() - v.at < 30 * 60_000)) return send(res, 200, [{ o_counted: false, o_views: h.view_count || 0 }]);
+        db.report_views.push({ hc_id: h.id, ip_hash: b.p_ip, device: b.p_device, at: Date.now() });
+        h.view_count = (h.view_count || 0) + 1; h.last_viewed_at = new Date().toISOString(); h.first_viewed_at = h.first_viewed_at || h.last_viewed_at;
+        return send(res, 200, [{ o_counted: true, o_views: h.view_count }]);
+      }
+      if (rest === 'rpc/hc_take_call') {
+        const b = await readBody(req); const r = db.health_checks.get(b.p_id);
+        if (!r || r.status !== 'running' || r.calls_used >= r.calls_limit || Date.parse(r.session_expires_at) < Date.now()) return send(res, 200, null);
+        r.calls_used++; return send(res, 200, r.calls_used);
       }
       if (rest === 'rpc/bump_usage') {
         const b = await readBody(req); const key = b.p_email.toLowerCase() + '|' + b.p_day;
@@ -221,4 +260,20 @@ export async function startFakes() {
   const listen = (s) => new Promise((r) => s.listen(0, '127.0.0.1', () => r(s.address().port)));
   const ports = { supabase: await listen(supabase), anthropic: await listen(anthropic), openai: await listen(openai), gemini: await listen(gemini) };
   return { ports, db, close: () => [supabase, anthropic, openai, gemini].forEach((s) => s.close()) };
+}
+
+/** Turnstile, Resend, Telegram giả: ghi lại mọi yêu cầu để kiểm thử. */
+export async function startFakeNotify() {
+  const sent = { emails: [], telegram: [], captcha: [] };
+  const s = http.createServer(async (req, res) => {
+    const u = new URL(req.url, 'http://x'); const b = req.method === 'POST' ? await readBody(req) : null;
+    if (u.pathname === '/turnstile') { sent.captcha.push(b); return send(res, 200, { success: b && b.secret === 'test-turnstile-secret' && b.response === 'ok-token' }); }
+    if (u.pathname === '/emails') { if (req.headers.authorization !== 'Bearer test-resend') return send(res, 401, { message: 'bad key' }); sent.emails.push(b); return send(res, 200, { id: 'em_' + sent.emails.length }); }
+    if (u.pathname === '/last-email') return send(res, 200, sent.emails.at(-1) || null);
+    if (/^\/bot[^/]+\/sendMessage$/.test(u.pathname)) { sent.telegram.push({ path: u.pathname, ...b }); return send(res, 200, { ok: true }); }
+    send(res, 404, {});
+  });
+  await new Promise((r) => s.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${s.address().port}`;
+  return { server: s, sent, env: { TURNSTILE_VERIFY_URL: base + '/turnstile', RESEND_API_URL: base + '/emails', RESEND_API_KEY: 'test-resend', TELEGRAM_API_BASE: base, TELEGRAM_BOT_TOKEN: 'test-bot', TELEGRAM_CHAT_ID: '-100123', SALES_EMAILS: 'sales@netspace.vn' }, base };
 }

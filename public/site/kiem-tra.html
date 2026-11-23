@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Health Check miễn phí – brand.ai.vn</title>
+<meta name="description" content="Xem ChatGPT, Gemini, Claude, Grok, DeepSeek đang nói gì về thương hiệu của bạn. Miễn phí, kết quả sau 2–3 phút.">
+<link rel="canonical" href="https://brand.ai.vn/kiem-tra">
+<link rel="icon" type="image/png" href="/site/assets/favicon.png">
+<meta name="theme-color" content="#030B1C">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@700;800&amp;family=Nunito:wght@400;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap">
+<link rel="stylesheet" href="/site/site.css">
+</head>
+<body>
+<header class="top"><div class="in"><a href="/" aria-label="brand.ai.vn – trang chủ"><img src="/site/assets/logo-white.png" alt="brand.ai.vn" width="179" height="30"></a><a class="link" href="/#dat-lich">Đặt lịch tư vấn</a></div></header>
+<main>
+<section id="stForm">
+  <span class="tag">// AI HEALTH CHECK MIỄN PHÍ</span>
+  <h1 style="font-size:clamp(34px,5vw,56px);margin:10px 0 14px">AI đang nói gì về thương hiệu của bạn?</h1>
+  <p class="lead">Hỏi 6 câu về thương hiệu trên từng nền tảng AI có tìm kiếm web, quét kỹ thuật website, rồi chấm điểm. Kết quả sau 2–3 phút, gửi kèm về email.</p>
+  <div class="chips" id="engines" style="margin:18px 0 28px" aria-label="Nền tảng AI sẽ được hỏi"></div>
+  <div class="grid" style="align-items:start">
+    <form class="f card" id="hcForm" novalidate>
+      <label>Tên thương hiệu<input type="text" name="brand" required maxlength="120" placeholder="Ví dụ: NetSpace" autocomplete="organization"></label>
+      <label>Website<input type="url" name="website" required maxlength="300" placeholder="https://" autocomplete="url"></label>
+      <label class="full">Email nhận kết quả<input type="email" name="email" required maxlength="200" autocomplete="email"></label>
+      <label>Họ tên <span class="opt">(không bắt buộc)</span><input type="text" name="name" maxlength="120" autocomplete="name"></label>
+      <label>Công ty <span class="opt">(không bắt buộc)</span><input type="text" name="company" maxlength="200"></label>
+      <label class="check full"><input type="checkbox" name="consent" required>Tôi đồng ý để NetSpace xử lý dữ liệu cá nhân trong biểu mẫu này để thực hiện AI Health Check, gửi kết quả và liên hệ tư vấn. <a href="[ĐƯỜNG DẪN CHÍNH SÁCH]">Chính sách quyền riêng tư</a></label>
+      <div class="ts-box full"></div>
+      <p class="msg full" id="formMsg" role="status" aria-live="polite"></p>
+      <button class="btn full" type="submit">Gửi đường dẫn xác nhận</button>
+    </form>
+    <div class="card">
+      <h2 style="font-size:24px;margin-bottom:12px">Bạn nhận được</h2>
+      <ul class="steps">
+        <li><b>1</b>Tỷ lệ AI nhận ra đúng thương hiệu và mức mô tả đúng</li>
+        <li><b>2</b>Trích đoạn AI đang nói về bạn trên từng nền tảng</li>
+        <li><b>3</b>Website có được AI trích dẫn không, 7 kiểm tra kỹ thuật</li>
+        <li><b>4</b>3 việc nên làm trước, theo framework 6 lớp</li>
+      </ul>
+      <p style="color:var(--muted);font-size:14px;margin:16px 0 0">Mỗi tên miền được kiểm tra miễn phí 1 lần trong 30 ngày. Chúng tôi xác minh email trước khi chạy để tránh lạm dụng.</p>
+    </div>
+  </div>
+</section>
+<section id="stMail" class="hidden" aria-live="polite">
+  <span class="tag">// BƯỚC 2/3</span>
+  <h1 style="font-size:clamp(32px,4.6vw,50px);margin:10px 0 14px">Kiểm tra hộp thư của bạn</h1>
+  <p class="lead">Chúng tôi vừa gửi đường dẫn xác nhận tới <b id="mailTo"></b>. Bấm vào đường dẫn để bắt đầu kiểm tra; đường dẫn có hiệu lực trong 24 giờ. Không thấy email? Kiểm tra thư mục thư rác hoặc Quảng cáo.</p>
+  <p id="devLink" class="hidden"><a class="btn ghost" href="#">Mở đường dẫn xác nhận (chỉ hiện khi chạy thử)</a></p>
+</section>
+<section id="stRun" class="hidden">
+  <span class="tag">// ĐANG KIỂM TRA</span>
+  <h1 style="font-size:clamp(32px,4.6vw,50px);margin:10px 0 14px" id="runTitle">Đang kiểm tra</h1>
+  <p class="lead">Giữ trang này mở trong khoảng 2–3 phút. Khi xong, báo cáo tự mở và được gửi về email.</p>
+  <div class="card" style="margin-top:18px;display:grid;gap:18px">
+    <div class="pbar" role="progressbar" aria-label="Tiến độ kiểm tra" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="pbar"></i></div>
+    <ul class="steps" id="runSteps"><li id="s1"><b>1</b>Quét kỹ thuật website</li><li id="s2"><b>2</b>Hỏi 6 câu trên từng AI</li><li id="s3"><b>3</b>Chấm điểm và lập báo cáo</li></ul>
+    <div class="matrix" id="matrix" aria-label="Tiến độ từng câu hỏi"></div>
+    <p class="msg err" id="runMsg" role="alert"></p>
+    <div id="runRetry" class="hidden"><button class="btn" type="button" id="retryBtn">Chạy tiếp</button></div>
+  </div>
+</section>
+</main>
+<footer class="foot"><div class="in">brand.ai.vn là dịch vụ AI Brand Readiness của Công ty Cổ phần Công nghệ &amp; Truyền thông Không Gian Số (NetSpace). Trụ sở: Tầng 3, Tòa nhà Mipec, 229 Tây Sơn, Phường Kim Liên, Hà Nội.</div></footer>
+<script src="/site/site.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); }, show = function (id) { ['stForm', 'stMail', 'stRun'].forEach(function (x) { $(x).classList.toggle('hidden', x !== id); }); window.scrollTo(0, 0); };
+  // Chạy thử cục bộ (trang nằm dưới /site/): mở báo cáo bằng /site/report.html?t=…
+  var go = function (u) { if (location.pathname.indexOf('/site/') === 0) location.href = '/site/report.html?t=' + u.split('/').pop(); else location.href = u; };
+  var running = false; window.addEventListener('beforeunload', function (e) { if (running) { e.preventDefault(); e.returnValue = ''; } });
+  BAI.config().then(function (cfg) {
+    $('engines').innerHTML = (cfg.engines || []).map(function (e) { return '<span class="chip"><i></i>' + e.label + '</span>'; }).join('');
+    if (cfg.open === false) BAI.msg($('formMsg'), 'Hôm nay đã hết lượt kiểm tra miễn phí. Đăng ký vẫn được ghi nhận; đường dẫn trong email dùng được đến 24 giờ. Hoặc đặt lịch để chuyên viên NetSpace kiểm tra.', 'err');
+  });
+  // Đăng ký
+  var form = $('hcForm'), msg = $('formMsg'), ts = null;
+  BAI.turnstile(form.querySelector('.ts-box')).then(function (x) { ts = x; }).catch(function () { BAI.msg(msg, 'Không tải được bước xác minh chống bot. Tải lại trang.', 'err'); });
+  form.addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var v = function (n) { return String(form.elements[n].value || '').trim(); };
+    if (v('brand').length < 2) return BAI.msg(msg, 'Vui lòng nhập tên thương hiệu.', 'err');
+    if (!v('website')) return BAI.msg(msg, 'Vui lòng nhập website.', 'err');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v('email'))) return BAI.msg(msg, 'Email chưa đúng định dạng.', 'err');
+    if (!form.elements.consent.checked) return BAI.msg(msg, 'Vui lòng đồng ý với việc xử lý dữ liệu cá nhân để nhận kết quả.', 'err');
+    var btn = form.querySelector('button'); btn.disabled = true; BAI.msg(msg, 'Đang gửi…');
+    try {
+      var a = BAI.attr();
+      var r = await BAI.api('/api/hc?op=start', { brand: v('brand'), website: v('website'), email: v('email'), name: v('name'), company: v('company'), consent: true, turnstile: ts ? ts.token() : '', utm: a.utm, referrer: a.referrer });
+      $('mailTo').textContent = v('email'); show('stMail');
+      if (r.devVerifyUrl) { var d = $('devLink'); d.classList.remove('hidden'); d.querySelector('a').href = r.devVerifyUrl.replace(/^https?:\/\/[^/]+/, ''); }
+    } catch (e) { BAI.msg(msg, e.message || 'Chưa gửi được. Thử lại sau.', 'err'); if (ts) ts.reset(); }
+    finally { btn.disabled = false; }
+  });
+  // Chạy kiểm tra sau khi bấm đường dẫn trong email
+  var m = location.hash.match(/v=([A-Za-z0-9_-]{30,100})/);
+  if (m) { history.replaceState(null, '', location.pathname); run(m[1]); }
+  window.addEventListener('hashchange', function () { var x = location.hash.match(/v=([A-Za-z0-9_-]{30,100})/); if (x) { history.replaceState(null, '', location.pathname); run(x[1]); } });
+
+  async function run(token) {
+    show('stRun'); $('runTitle').textContent = 'Đang mở phiên kiểm tra…'; $('runMsg').textContent = '';
+    var v;
+    try { v = await BAI.api('/api/hc?op=verify', { token: token }); }
+    catch (e) { $('runTitle').textContent = 'Chưa chạy được kiểm tra'; $('runMsg').textContent = e.message || 'Đường dẫn không hợp lệ.'; return; }
+    if (v.done) { go(v.reportUrl); return; }
+    $('runTitle').textContent = 'Đang kiểm tra ' + v.brand;
+    var H = { 'X-HC-Session': v.session }, tasks = [], done = 0, failed = 0;
+    $('matrix').innerHTML = '<div class="mrow"><span></span>' + v.qids.map(function (q) { return '<span class="cell" style="background:none">' + q + '</span>'; }).join('') + '</div>' +
+      v.engines.map(function (e) { return '<div class="mrow"><b style="font-size:14px">' + e.label + '</b>' + v.qids.map(function (q) { return '<span class="cell" id="c_' + e.id + '_' + q + '" aria-label="' + e.label + ' ' + q + '">·</span>'; }).join('') + '</div>'; }).join('');
+    v.engines.forEach(function (e) { v.qids.forEach(function (q) { tasks.push({ e: e.id, q: q }); }); });
+    var total = tasks.length + 2, step = function () { var p = Math.round((done + (scanDone ? 1 : 0)) / total * 100); $('pbar').style.width = p + '%'; document.querySelector('[role=progressbar]').setAttribute('aria-valuenow', p); };
+    var scanDone = false; running = true; $('s1').className = 'on'; $('s2').className = 'on';
+    var scanP = BAI.api('/api/hc?op=scan', {}, H).catch(function () { return null; }).then(function () { scanDone = true; $('s1').className = 'done'; step(); });
+    var stop = null, i = 0;
+    async function worker() {
+      while (i < tasks.length && !stop) {
+        var t = tasks[i++], c = $('c_' + t.e + '_' + t.q); c.className = 'cell run'; c.textContent = '…';
+        for (var attempt = 0; attempt < 2; attempt++) {
+          try { var r = await BAI.api('/api/hc?op=probe', { qid: t.q, engine: t.e }, H); c.className = 'cell ' + (r.ok ? 'ok' : 'fail'); c.textContent = r.ok ? '✓' : '×'; if (!r.ok) failed++; break; }
+          catch (e) { if (e.code === 'network' && attempt === 0) continue; if (['bad_session', 'session_expired', 'hc_limit', 'hc_done'].indexOf(e.code) >= 0) stop = e; c.className = 'cell fail'; c.textContent = '×'; failed++; break; }
+        }
+        done++; step();
+      }
+    }
+    await Promise.all([worker(), worker(), worker(), worker()]); await scanP;
+    if (stop && stop.code !== 'hc_limit') { running = false; $('runMsg').textContent = stop.message; return; }
+    $('s2').className = 'done'; $('s3').className = 'on';
+    try { var f = await BAI.api('/api/hc?op=finish', {}, H); running = false; $('s3').className = 'done'; $('pbar').style.width = '100%'; go(f.reportUrl); }
+    catch (e) { running = false; $('runMsg').textContent = (e.message || 'Chưa lập được báo cáo.') + ' Bấm "Chạy tiếp" để thử lại.'; $('runRetry').classList.remove('hidden'); $('retryBtn').onclick = function () { $('runRetry').classList.add('hidden'); run(token); }; }
+  }
+})();
+</script>
+</body>
+</html>

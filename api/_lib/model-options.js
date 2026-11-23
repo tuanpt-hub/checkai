@@ -1,9 +1,9 @@
-import { gatewayEnabled } from './gateway.js';
+import { gatewayEnabled, GATEWAY_ONLY } from './gateway.js';
 import { HttpError } from './util.js';
 import { configured } from './providers.js';
 
 // USD per million tokens / per thousand searches, checked against Gateway catalog.
-export const PRICING_DATE = '2026-11-13';
+export const PRICING_DATE = '2026-11-22';
 export const MODEL_OPTIONS = {
   claude: [
     { id: 'anthropic/claude-haiku-5.5', name: 'Claude Haiku 5.5 · tiết kiệm', input: .1, output: .5, search: 10 },
@@ -19,9 +19,19 @@ export const MODEL_OPTIONS = {
     { id: 'google/gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite · tiết kiệm', input: .25, output: 1.5, search: 14 },
     { id: 'google/gemini-3.6-flash', name: 'Gemini 3.6 Flash', input: .75, output: 3.75, search: 14 },
   ],
+  // SpaceXAI: tìm kiếm web gốc $5/1.000 lượt.
+  grok: [
+    { id: 'spacexai/grok-4.20-non-reasoning', name: 'Grok 4.20 · nhanh, tiết kiệm', input: 1.25, output: 2.5, search: 5 },
+    { id: 'spacexai/grok-4.7', name: 'Grok 4.7', input: 2, output: 6, search: 5 },
+  ],
+  // DeepSeek Search của AI Gateway: $0,75/1.000 lượt có kết quả.
+  deepseek: [
+    { id: 'deepseek/deepseek-v4.1-flash', name: 'DeepSeek V4.1 Flash · tiết kiệm', input: .3, output: 1.2, search: .75 },
+    { id: 'deepseek/deepseek-v4.1-flash-fast', name: 'DeepSeek V4.1 Flash Fast', input: .6, output: 2.4, search: .75 },
+  ],
 };
 export function modelOptions(defaults) {
-  return Object.fromEntries(['claude', 'openai', 'gemini', 'judge'].map(role => {
+  return Object.fromEntries(['claude', 'openai', 'gemini', ...GATEWAY_ONLY, 'judge'].map(role => {
     const engine = role === 'judge' ? 'claude' : role;
     if (role === 'judge') {
       const available = configured();
@@ -32,6 +42,7 @@ export function modelOptions(defaults) {
       return [role,options];
     }
     const id = defaults[role];
+    if (GATEWAY_ONLY.includes(role) && !gatewayEnabled()) return [role, []];
     if (!gatewayEnabled()) return [role, [{ id, name: id, input: null, output: null, search: null }]];
     const options = MODEL_OPTIONS[engine].map(x => ({ ...x }));
     if (!options.some(x => x.id === id)) options.push({ id, name: id + ' · cấu hình máy chủ', input: null, output: null, search: null });

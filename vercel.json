@@ -14,6 +14,13 @@
     },
     "api/intake.js": {
       "maxDuration": 60
+    },
+    "api/hc.js": {
+      "maxDuration": 120,
+      "includeFiles": "{public/site/report.html,public/site/assets/symbol.png,node_modules/@expo-google-fonts/nunito/800ExtraBold/Nunito_800ExtraBold.ttf,node_modules/@expo-google-fonts/nunito/400Regular/Nunito_400Regular.ttf}"
+    },
+    "api/leads.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -40,6 +47,74 @@
     {
       "source": "/api/intake-submissions",
       "destination": "/api/intake-links?op=subs"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "destination": "/site/home"
+    },
+    {
+      "source": "/kiem-tra",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "destination": "/site/kiem-tra"
+    },
+    {
+      "source": "/r/:token",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "destination": "/api/hc?op=page&t=:token"
+    },
+    {
+      "source": "/robots.txt",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "destination": "/site/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "destination": "/site/sitemap.xml"
+    },
+    {
+      "source": "/llms.txt",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "destination": "/site/llms.txt"
+    },
+    {
+      "source": "/",
+      "destination": "/app"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/app-robots.txt"
     }
   ],
   "headers": [
@@ -74,6 +149,81 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
         }
+      ],
+      "missing": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/r/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/kiem-tra",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
       ]
     },
     {
@@ -84,6 +234,19 @@
           "value": "no-store"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.brand.ai.vn"
+        }
+      ],
+      "destination": "https://brand.ai.vn/:path*",
+      "permanent": true
     }
   ]
 }
