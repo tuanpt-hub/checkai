@@ -143,8 +143,22 @@ Biến môi trường mới:
 | `HC_MODEL_<ENGINE>`, `HC_JUDGE_MODEL` | Không | Model cho Health Check; mặc định là model tiết kiệm |
 | `HC_DOMAIN_COOLDOWN_DAYS` | Không | Mặc định 30 |
 | `HC_REPORT_DAYS` | Không | Hạn dùng đường dẫn báo cáo, mặc định 30 ngày |
+| `ADMIN_EMAILS` | Nên có | Quản trị viên dự phòng, cách nhau bởi dấu phẩy: luôn có quyền quản trị, không bị khóa/xóa từ giao diện. Các quản trị viên khác được cấp trong tab Người dùng |
 
 SQL: chạy `supabase/migrations/003_leads_health_checks.sql` một lần. Kiểm thử: `node test/hc.mjs` (trong `npm test`) và `python3 test/ui-site.py` (cần `npm run dev:fake`; landing chạy thử ở `/site/home.html`).
+
+## Quản lý người dùng (app.brand.ai.vn)
+
+Tab **Người dùng** (mục QUẢN TRỊ, chỉ quản trị viên): thêm, sửa tên, đổi vai trò **Quản trị viên / Nhân viên**, khóa/mở khóa, đặt lại mật khẩu, xóa tài khoản. Tài khoản nằm ở Supabase Auth; vai trò, khóa, cờ "phải đổi mật khẩu" ở bảng `staff` (`supabase/migrations/005_staff.sql`).
+
+- **Ai được vào:** người có trong `staff` và chưa bị khóa (kể cả email ngoài `ALLOWED_EMAIL_DOMAINS`), hoặc thuộc allowlist theo biến môi trường như trước. Khóa tài khoản chặn cả phiên đang mở (bộ đệm quyền 30 giây, xóa ngay khi quản trị viên thay đổi) và cấm làm mới phiên ở Supabase.
+- **Thêm người dùng:** *gửi email mời* (đường dẫn một lần từ Supabase `generate_link`, gửi qua Brevo; người dùng tự đặt mật khẩu) hoặc *đặt mật khẩu tạm* (lần đầu đăng nhập bắt đổi). Nếu email mời không gửi được, giao diện hiện đường dẫn để gửi qua kênh riêng.
+- **Mật khẩu:** từ 10 ký tự, có chữ và số. Mọi người tự đổi mật khẩu bằng nút chìa khóa ở góc tài khoản (cần mật khẩu hiện tại).
+- **Luật bảo vệ:** không tự hạ quyền, tự khóa, tự xóa; email trong `ADMIN_EMAILS` là *quản trị dự phòng*, luôn có quyền, không khóa/xóa được từ giao diện; luôn còn ít nhất một quản trị viên. Xóa tài khoản không xóa audit hay khách tiềm năng (dữ liệu chung).
+- **Cấu hình Supabase bắt buộc:** Authentication → URL Configuration: *Site URL* = `https://app.brand.ai.vn`, *Redirect URLs* thêm `https://app.brand.ai.vn/**`. Thiếu bước này, link mời/đặt lại sẽ chuyển về sai địa chỉ.
+- Chưa chạy SQL 005: app tự quay về allowlist theo tên miền/`ADMIN_EMAILS` (không khóa cả nhóm); tab Người dùng báo lỗi cho tới khi có bảng.
+
+Kiểm thử: `node test/users.mjs`, `node test/access-cache.mjs` (trong `npm test`), `python3 test/ui-users.py` (cần `npm run dev:fake`).
 
 ### Đợt B: báo cáo chia sẻ
 
