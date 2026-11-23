@@ -13,69 +13,153 @@
 </head>
 <body>
 <header class="top"><div class="in"><a class="brand" href="/" aria-label="brand.ai.vn – trang chủ"><img src="/site/assets/logo-white.png" alt="brand.ai.vn" width="191" height="32"><span class="brand-tag">AI BRAND READINESS<br>BY NETSPACE</span></a><a class="cta" href="/#dat-lich"><span>Đặt lịch<span class="more"> tư vấn</span></span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a></div></header>
-<main id="root" aria-live="polite"><p style="color:var(--muted)">Đang tải báo cáo…</p></main>
+<div class="k-page"><main id="root" class="k-main" aria-live="polite"><p style="color:var(--muted)">Đang tải báo cáo…</p></main></div>
 <footer class="foot"><div class="in">brand.ai.vn là dịch vụ AI Brand Readiness của Công ty Cổ phần Công nghệ &amp; Truyền thông Không Gian Số (NetSpace).</div></footer>
 <script src="/site/site.js"></script>
 <script>
 (function () {
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
   var pc = function (x) { return x == null ? '—' : Math.round(x * 100) + '%'; };
+  var dec = function (x) { return x == null ? '—' : String(Math.round(x * 10) / 10).replace('.', ','); };
   var m = location.pathname.match(/\/r\/([A-Za-z0-9_-]{30,100})/) || location.search.match(/[?&]t=([A-Za-z0-9_-]{30,100})/);
   var root = document.getElementById('root');
-  if (!m) { root.innerHTML = '<h1>Không tìm thấy báo cáo</h1><p class="lead">Đường dẫn chưa đúng. Mở lại đường dẫn trong email.</p>'; return; }
+  if (!m) { root.innerHTML = '<h1 class="k-h1">Không tìm thấy báo cáo</h1><p class="lead">Đường dẫn chưa đúng. Mở lại đường dẫn trong email.</p>'; return; }
   var nv = /[?&]nv=1/.test(location.search) ? '&nv=1' : '';
   BAI.api('/api/hc?op=report&t=' + m[1] + nv).then(render).catch(function (e) {
     if (e.code === 'report_expired') {
-      root.innerHTML = '<span class="tag">// BÁO CÁO AI HEALTH CHECK</span><h1 style="font-size:clamp(32px,4.6vw,50px);margin:10px 0 14px">' + esc(e.message) + '</h1>' +
+      root.innerHTML = '<span class="tag">// BÁO CÁO AI HEALTH CHECK</span><h1 class="k-h1" style="font-size:clamp(32px,4.6vw,50px)">' + esc(e.message) + '</h1>' +
         '<p class="lead">Đường dẫn báo cáo có hiệu lực 30 ngày. Cần xem lại kết quả hoặc phân tích sâu hơn, hãy liên hệ NetSpace; sau 30 ngày kể từ lần kiểm tra trước, bạn có thể chạy lại Health Check miễn phí.</p>' +
         '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:22px"><a class="btn" href="/#dat-lich">Đặt lịch tư vấn</a><a class="btn ghost" href="/kiem-tra">Chạy AI Health Check</a></div>';
       return;
     }
-    root.innerHTML = '<h1>Không tìm thấy báo cáo</h1><p class="lead">' + esc(e.message) + '</p>';
+    root.innerHTML = '<h1 class="k-h1">Không tìm thấy báo cáo</h1><p class="lead">' + esc(e.message) + '</p>';
   });
-  function ring(rate, color) {
-    var C = 2 * Math.PI * 50, d = Math.round(C * (rate || 0));
-    return '<svg role="img" aria-label="' + pc(rate) + '" viewBox="0 0 120 120" width="112" height="112" style="flex:none"><circle cx="60" cy="60" r="50" fill="none" stroke="#132C5C" stroke-width="12"></circle><circle cx="60" cy="60" r="50" fill="none" stroke="' + color + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + d + ' ' + Math.round(C) + '" transform="rotate(-90 60 60)"></circle><text x="60" y="70" text-anchor="middle" font-family="Saira Semi Condensed, sans-serif" font-size="30" font-weight="800" fill="#fff">' + pc(rate) + '</text></svg>';
+
+  /* Văn bản AI: bỏ ký hiệu markdown, giữ in đậm, bỏ liên kết bị cắt dở. */
+  function clean(t) {
+    var s = esc(String(t || '').replace(/\(\[[^\]]*\]?\(?[^)]*\)?\)?\s*$/, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'));
+    return s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/(^|\s)\*\s/g, '$1• ').replace(/\*\*/g, '') + '…';
   }
-  function bar4(n) { var s = ''; for (var i = 0; i < 4; i++) s += '<span class="' + (n != null && i < n ? 'on' : '') + '"></span>'; return '<div class="bar4" aria-hidden="true">' + s + '</div>'; }
+  /* Gộp các tổ chức AI nhầm sang, đếm số lần. */
+  function confusions(engines) {
+    var map = {};
+    engines.forEach(function (e) { (e.confused || []).forEach(function (c) { String(c).split(/;|,(?![^()]*\))/).forEach(function (x) {
+      var n = x.replace(/\s+/g, ' ').trim(); if (n.length < 2) return; var k = n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/^(cong ty co phan|cong ty cp|cong ty|truong)\s+/, '');
+      if (!map[k]) map[k] = { name: n, count: 0, ai: {} }; map[k].count++; map[k].ai[e.label] = 1; }); }); });
+    return Object.keys(map).map(function (k) { var v = map[k]; v.ais = Object.keys(v.ai); return v; }).sort(function (a, b) { return b.ais.length - a.ais.length || b.count - a.count; });
+  }
+  function status(ok, warn) { return ok ? '<span class="r-st ok">Đạt</span>' : warn ? '<span class="r-st warn">Cần cải thiện</span>' : '<span class="r-st bad">Chưa đạt</span>'; }
+  function bullet(v, max, target, color) {
+    var w = v == null ? 0 : Math.max(0, Math.min(100, v / max * 100)), t = target == null ? null : target / max * 100;
+    return '<div class="r-bullet" aria-hidden="true"><i style="width:' + w + '%;background:' + color + '"></i>' + (t == null ? '' : '<b style="left:' + t + '%"></b>') + '</div>';
+  }
+  function mini(k, n, color) { var w = n ? k / n * 100 : 0; return '<div class="r-mini"><div class="r-mini-bar"><i style="width:' + w + '%;background:' + color + '"></i></div><span>' + (n ? k + '/' + n : '—') + '</span></div>'; }
+  function gauge(rate, target, lo, hi) {
+    var R = 86, C = 2 * Math.PI * R, d = (C * (rate || 0)).toFixed(1), ok = rate != null && rate >= target;
+    var ang = function (p) { var a = -Math.PI / 2 + p * 2 * Math.PI; return [110 + R * Math.cos(a), 110 + R * Math.sin(a)]; };
+    var t1 = ang(target), band = '';
+    if (lo != null && hi != null) { var a1 = ang(lo), a2 = ang(hi), large = (hi - lo) > 0.5 ? 1 : 0; band = '<path d="M' + a1[0].toFixed(1) + ' ' + a1[1].toFixed(1) + ' A' + R + ' ' + R + ' 0 ' + large + ' 1 ' + a2[0].toFixed(1) + ' ' + a2[1].toFixed(1) + '" fill="none" stroke="#ffffff" stroke-opacity=".18" stroke-width="30"></path>'; }
+    return '<svg class="r-gauge" role="img" aria-label="AI nhận ra đúng ' + pc(rate) + ', mục tiêu ' + pc(target) + '" viewBox="0 0 220 220">' +
+      '<defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + (ok ? '#22D3EE' : '#FF8A9F') + '"></stop><stop offset="1" stop-color="' + (ok ? '#0A5CF5' : '#FF5C7A') + '"></stop></linearGradient></defs>' +
+      '<circle cx="110" cy="110" r="104" fill="none" stroke="#22D3EE" stroke-opacity=".22" stroke-width="5" stroke-dasharray="2 9"></circle>' +
+      '<circle cx="110" cy="110" r="' + R + '" fill="none" stroke="#132C5C" stroke-width="18"></circle>' + band +
+      '<circle cx="110" cy="110" r="' + R + '" fill="none" stroke="url(#rg)" stroke-width="18" stroke-linecap="round" stroke-dasharray="' + d + ' ' + C.toFixed(1) + '" transform="rotate(-90 110 110)"></circle>' +
+      '<circle cx="' + t1[0].toFixed(1) + '" cy="' + t1[1].toFixed(1) + '" r="7" fill="#B6F35A" stroke="#030B1C" stroke-width="3"></circle>' +
+      '<text x="110" y="112" text-anchor="middle" font-family="Saira Semi Condensed, sans-serif" font-size="48" font-weight="800" fill="#fff">' + pc(rate) + '</text>' +
+      '<text x="110" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#93A8CF">MỤC TIÊU ' + pc(target) + '</text></svg>';
+  }
+  function scoreDots(sc) { var s = ''; for (var i = 0; i < 4; i++) s += '<span class="' + (sc != null && i < sc ? 'on' : '') + '"></span>'; return '<div class="bar4" aria-hidden="true">' + s + '</div>'; }
+
   function render(r) {
     document.title = 'AI Health Check: ' + r.brand + ' – brand.ai.vn';
-    var rec = r.recognition || {}, acc = r.accuracy || {}, cit = r.citation || {};
-    var recOk = rec.rate != null && rec.rate >= rec.target, small = recOk && rec.lo != null && rec.lo < rec.target;
+    var rec = r.recognition || {}, acc = r.accuracy || {}, cit = r.citation || {}, eng = r.engines || [], checks = r.checks || [];
+    var recOk = rec.rate != null && rec.rate >= rec.target, accOk = acc.avg != null && acc.avg >= acc.target, citOk = cit.rate != null && cit.rate >= 0.5;
     var date = new Date(r.date).toLocaleDateString('vi-VN'), until = r.expiresAt ? new Date(r.expiresAt).toLocaleDateString('vi-VN') : '';
+    var nAI = eng.filter(function (e) { return e.answered; }).length;
+    var conf = confusions(eng), passed = checks.filter(function (c) { return c.score != null && c.score >= 3; }).length;
+    var verdict = recOk && accOk ? 'AI nhận ra và mô tả đúng ' + r.brand + '. Bước tiếp theo là đo việc AI có đề xuất bạn khi khách hỏi mua.'
+      : recOk ? 'AI nhận ra ' + r.brand + ' nhưng mô tả chưa chính xác: cần chuẩn hóa dữ kiện thương hiệu.'
+      : 'AI chưa nhận ra ổn định ' + r.brand + (conf.length ? ' và còn nhầm với tổ chức trùng tên.' : '.');
+    var tags = function (a) { var mm = a.match(/\(tiêu chí ([^)]+)\)/); return { text: a.replace(/\s*\(tiêu chí [^)]+\)\.?$/, '.'), crit: mm ? mm[1].split(/,\s*/) : [] }; };
     root.innerHTML =
+      /* 1. Đầu trang */
       '<div class="print-only" style="margin-bottom:14px"><img src="/site/assets/logo-dark.png" alt="brand.ai.vn" style="height:26px;width:auto"></div>' +
-      '<span class="tag">// KẾT QUẢ AI HEALTH CHECK · ' + esc(date) + '</span>' +
-      '<h1 style="font-size:clamp(34px,5vw,56px);margin:10px 0 10px">' + esc(r.brand) + '</h1>' +
-      '<p class="lead" style="margin:0 0 8px">' + esc(r.summary) + '</p>' +
-      '<p style="margin:0 0 28px"><span class="chip" style="font-family:JetBrains Mono,monospace;font-size:12px;color:#FFB3C1;border-color:#FF5C7A">Tự động · chưa qua chuyên gia</span> <span style="color:var(--muted);font-size:14px">' + esc(r.domain) + (until ? ' · đường dẫn hiệu lực đến ' + esc(until) : '') + '</span></p>' +
-      '<p class="no-print" style="margin:-12px 0 28px"><button class="btn ghost" type="button" id="pdf">Tải PDF</button></p>' +
-      '<div class="grid">' +
-        '<div class="card" style="display:flex;gap:16px;align-items:center">' + ring(rec.rate, recOk ? '#22D3EE' : '#FF5C7A') + '<div><b>AI nhận ra đúng thương hiệu</b><br><span style="color:var(--muted);font-size:14px">' + (rec.k || 0) + '/' + (rec.n || 0) + ' câu · mục tiêu từ 75%' + (small ? ' · mẫu nhỏ, cận dưới ' + pc(rec.lo) : '') + '</span></div></div>' +
-        '<div class="card"><b>Mức mô tả đúng</b><div class="big" style="margin:8px 0">' + (acc.avg == null ? '—' : String(acc.avg).replace('.', ',')) + '<span style="font-size:22px;color:var(--muted)">/4</span></div>' + bar4(acc.avg == null ? null : Math.round(acc.avg)) + '<span style="color:var(--muted);font-size:14px">mục tiêu từ 3,5</span></div>' +
-        '<div class="card"><b>Website được AI trích dẫn</b><div class="big" style="margin:8px 0">' + pc(cit.rate) + '</div><span style="color:var(--muted);font-size:14px">' + (cit.k || 0) + '/' + (cit.n || 0) + ' câu trả lời có dẫn nguồn tới ' + esc(r.domain) + '</span></div>' +
-      '</div>' +
-      '<h2 style="font-size:clamp(26px,3.4vw,36px);margin:56px 0 18px">AI đang nói gì về bạn</h2>' +
-      '<div class="grid">' + (r.engines || []).map(function (e) {
-        return '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h3 style="font-size:22px">' + esc(e.label) + '</h3><span style="font-family:JetBrains Mono,monospace;font-size:13px;color:' + (e.judged && e.known / e.judged >= .75 ? '#22D3EE' : '#FFB3C1') + '">biết đúng ' + e.known + '/' + e.judged + '</span></div>' +
-          '<p style="margin:6px 0 0;color:var(--muted);font-size:14px">Mô tả đúng ' + (e.accuracy == null ? '—' : String(e.accuracy).replace('.', ',') + '/4') + ' · trích dẫn website ' + e.cites + '/' + e.answered + (e.failed ? ' · ' + e.failed + ' câu không trả lời được' : '') + '</p>' +
-          (e.confused && e.confused.length ? '<p style="margin:6px 0 0;color:#FFB3C1;font-size:14px">Có lúc nhầm với: ' + esc(e.confused.join(', ')) + '</p>' : '') +
-          (e.excerpt ? '<blockquote>“' + esc(e.excerpt) + '”</blockquote>' : '') + '</div>';
-      }).join('') + '</div>' +
-      '<h2 style="font-size:clamp(26px,3.4vw,36px);margin:56px 0 18px">Kiểm tra kỹ thuật website</h2>' +
-      '<div class="card" style="display:grid;gap:16px">' + (r.checks || []).map(function (c) {
-        return '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,140px);gap:6px 16px;align-items:center"><div><b>' + esc(c.name) + '</b>' + (/^\d/.test(c.id) ? ' <span style="font-family:JetBrains Mono,monospace;font-size:12px;color:var(--muted)">' + esc(c.id) + '</span>' : '') + '<br><span style="color:var(--muted);font-size:14px">' + esc(c.note) + '</span></div>' + (c.score == null ? '<span style="color:var(--muted)">—</span>' : bar4(c.score)) + '</div>';
-      }).join('') + '</div>' +
-      '<h2 style="font-size:clamp(26px,3.4vw,36px);margin:56px 0 18px">3 việc nên làm trước</h2>' +
-      '<ol class="steps card">' + (r.actions || []).map(function (a, i) { return '<li class="on"><b>' + (i + 1) + '</b>' + esc(a) + '</li>'; }).join('') + '</ol>' +
-      '<div class="card" style="margin-top:56px;border-color:#0A5CF5;box-shadow:0 0 34px rgba(10,92,245,.3)"><h2 style="font-size:clamp(24px,3vw,32px);margin-bottom:10px">Khi khách hỏi mua, AI có đề xuất bạn không?</h2><p style="color:var(--body);margin:0 0 18px">Health Check chỉ hỏi về chính thương hiệu. AI Brand Audit đo cả việc AI đề xuất bạn trong tình huống mua, so với đối thủ, trên 36 tiêu chí, kèm kế hoạch 90 ngày.</p><div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn" href="/#dat-lich">Đặt lịch AI Brand Audit</a><button class="btn ghost" type="button" id="share">Sao chép đường dẫn báo cáo</button></div></div>' +
-      '<p style="color:var(--muted);font-size:14px;margin-top:28px">' + esc(r.caveat) + '</p>' +
+      '<section class="r-hero">' +
+        '<div style="min-width:0">' +
+          '<span class="tag">// KẾT QUẢ AI HEALTH CHECK · ' + esc(date) + '</span>' +
+          '<h1 class="k-h1">' + esc(r.brand) + '</h1>' +
+          '<p class="r-domain"><a href="' + esc(r.website) + '" target="_blank" rel="noopener">' + esc(r.domain) + '</a></p>' +
+          '<p class="r-verdict"><span class="k-dot"></span>' + esc(verdict) + '</p>' +
+          '<div class="r-meta"><span class="chip r-auto">Tự động · chưa qua chuyên gia</span><span class="chip">' + nAI + ' nền tảng AI · ' + (rec.n || 0) + ' câu trả lời</span>' + (until ? '<span class="chip">Đường dẫn hiệu lực đến ' + esc(until) + '</span>' : '') + '</div>' +
+          '<div class="r-actions no-print"><button class="btn" type="button" id="pdf">Tải PDF</button><button class="btn ghost" type="button" id="share">Sao chép đường dẫn</button></div>' +
+        '</div>' +
+        '<div class="r-gauge-box">' + gauge(rec.rate, rec.target, rec.lo, rec.hi) +
+          '<b>AI nhận ra đúng thương hiệu</b><span>' + (rec.k || 0) + '/' + (rec.n || 0) + ' câu trả lời' + (rec.lo != null ? ' · khoảng tin cậy 95%: ' + pc(rec.lo) + '–' + pc(rec.hi) : '') + '</span>' +
+          '<span class="r-legend"><i class="tg"></i>mục tiêu <i class="ci"></i>khoảng tin cậy</span></div>' +
+      '</section>' +
+
+      /* 2. Ba chỉ số */
+      '<section class="r-sec"><span class="tag">// 01_CHỈ SỐ CHÍNH</span><h2 class="r-h2">3 chỉ số so với mục tiêu</h2><div class="r-kpis">' +
+        '<div class="card r-kpi"><div class="r-kpi-top"><b>AI nhận ra đúng</b>' + status(recOk, rec.rate >= 0.5) + '</div><div class="big">' + pc(rec.rate) + '</div>' + bullet(rec.rate, 1, rec.target, recOk ? '#22D3EE' : '#FF5C7A') + '<p>Tỷ lệ câu trả lời thể hiện hiểu biết thật về đúng thương hiệu này. Mục tiêu từ 75% (tiêu chí 1.6).</p></div>' +
+        '<div class="card r-kpi"><div class="r-kpi-top"><b>Mô tả đúng</b>' + status(accOk, acc.avg >= 2.5) + '</div><div class="big">' + dec(acc.avg) + '<small>/4</small></div>' + bullet(acc.avg, 4, acc.target, accOk ? '#22D3EE' : '#FF5C7A') + '<p>Mức khớp giữa điều AI nói và dữ kiện trên website chính thức. Mục tiêu từ 3,5/4 (tiêu chí 3.5).</p></div>' +
+        '<div class="card r-kpi"><div class="r-kpi-top"><b>Trích dẫn website</b>' + (citOk ? '<span class="r-st ok">Tốt</span>' : '<span class="r-st warn">Thấp</span>') + '</div><div class="big">' + pc(cit.rate) + '</div>' + bullet(cit.rate, 1, null, '#3D7BFF') + '<p>' + (cit.k || 0) + '/' + (cit.n || 0) + ' câu trả lời dẫn nguồn tới ' + esc(r.domain) + '. AI tìm thấy và dùng website của bạn làm căn cứ.</p></div>' +
+      '</div></section>' +
+
+      /* 3. So sánh nền tảng */
+      '<section class="r-sec"><span class="tag">// 02_SO SÁNH NỀN TẢNG</span><h2 class="r-h2">Từng AI nhìn ' + esc(r.brand) + ' thế nào</h2>' +
+      '<div class="card r-table" role="table" aria-label="So sánh các nền tảng AI">' +
+        '<div class="r-row r-head" role="row"><span role="columnheader">Nền tảng</span><span role="columnheader">Nhận ra đúng</span><span role="columnheader">Mô tả đúng</span><span role="columnheader">Trích dẫn website</span><span role="columnheader">Nhầm lẫn</span></div>' +
+        eng.map(function (e) {
+          var ok = e.judged && e.known / e.judged >= 0.75;
+          return '<div class="r-row" role="row"><span role="cell"><b>' + esc(e.label) + '</b>' + (e.failed ? '<small class="err"> · ' + e.failed + ' lỗi</small>' : '') + '</span>' +
+            '<span role="cell">' + mini(e.known, e.judged, ok ? '#22D3EE' : '#FF5C7A') + '</span>' +
+            '<span role="cell"><div class="r-mini">' + scoreDots(e.accuracy == null ? null : Math.round(e.accuracy)) + '<span>' + dec(e.accuracy) + '</span></div></span>' +
+            '<span role="cell">' + mini(e.cites, e.answered, '#3D7BFF') + '</span>' +
+            '<span role="cell">' + ((e.confused || []).length ? '<span class="r-st bad">' + e.confused.length + ' câu</span>' : '<span class="r-st ok">Không</span>') + '</span></div>';
+        }).join('') +
+      '</div></section>' +
+
+      /* 4. Nhầm lẫn thực thể */
+      (conf.length ? '<section class="r-sec"><span class="tag" style="color:#FF5C7A">// 03_RỦI RO NHẦM LẪN</span><h2 class="r-h2">AI đang nhầm bạn với ' + conf.length + ' tổ chức khác</h2>' +
+        '<div class="card r-confuse"><p>Khi có nhiều thực thể trùng tên, AI dễ trộn thông tin của tổ chức khác vào câu trả lời về bạn. Đây là nguyên nhân thường gặp khiến điểm "mô tả đúng" thấp (tiêu chí 2.1, 2.5).</p><div class="r-cchips">' +
+        conf.slice(0, 12).map(function (c) { return '<span class="r-cchip"><b>' + esc(c.name) + '</b><small>' + c.ais.length + ' AI · ' + esc(c.ais.join(', ')) + '</small></span>'; }).join('') + '</div></div></section>' : '') +
+
+      /* 5. AI đang nói gì */
+      '<section class="r-sec"><span class="tag">// 04_TRÍCH ĐOẠN</span><h2 class="r-h2">AI đang nói gì về bạn</h2><p class="r-sub">Câu trả lời cho câu hỏi "' + esc(r.brand) + ' là công ty gì?". Bấm để mở từng nền tảng.</p><div class="r-quotes">' +
+        eng.filter(function (e) { return e.excerpt; }).map(function (e, i) {
+          return '<details class="card r-quote"' + (i === 0 ? ' open' : '') + '><summary><b>' + esc(e.label) + '</b><span>biết đúng ' + e.known + '/' + e.judged + ' · mô tả ' + dec(e.accuracy) + '/4</span><i aria-hidden="true">+</i></summary><blockquote>' + clean(e.excerpt) + '</blockquote>' +
+            ((e.confused || []).length ? '<p class="r-qconf">Có lúc nhầm với: ' + esc(e.confused.join(' · ')) + '</p>' : '') + '</details>';
+        }).join('') + '</div></section>' +
+
+      /* 6. Kỹ thuật */
+      '<section class="r-sec"><span class="tag">// 05_KỸ THUẬT</span><h2 class="r-h2">Kiểm tra kỹ thuật website <small class="r-count">' + passed + '/' + checks.length + ' đạt</small></h2><div class="r-checks">' +
+        checks.map(function (c) {
+          var s = c.score, st = s == null ? '<span class="r-st">Chưa đo</span>' : status(s >= 3, s === 2);
+          return '<div class="card r-check"><div class="r-kpi-top"><b>' + esc(c.name) + (/^\d/.test(c.id) ? ' <small>' + esc(c.id) + '</small>' : '') + '</b>' + st + '</div>' + (s == null ? '' : scoreDots(s)) + '<p>' + esc(c.note) + '</p></div>';
+        }).join('') + '</div></section>' +
+
+      /* 7. Việc nên làm */
+      '<section class="r-sec"><span class="tag" style="color:#B6F35A">// 06_HÀNH ĐỘNG</span><h2 class="r-h2">3 việc nên làm trước</h2><div class="r-todo">' +
+        (r.actions || []).map(function (a, i) { var t = tags(a); return '<div class="card r-todo-i"><span class="r-n">0' + (i + 1) + '</span><div><b>' + esc(t.text) + '</b>' + (t.crit.length ? '<div class="r-crit">' + t.crit.map(function (c) { return '<span>Tiêu chí ' + esc(c) + '</span>'; }).join('') + '</div>' : '') + '</div></div>'; }).join('') +
+      '</div></section>' +
+
+      /* 8. Phương pháp + kêu gọi */
+      '<section class="r-sec r-two">' +
+        '<div class="card r-method"><span class="tag">// PHƯƠNG PHÁP</span><ul>' +
+          '<li>6 câu hỏi về chính thương hiệu, gửi tới ' + nAI + ' nền tảng AI có bật tìm kiếm web.</li>' +
+          '<li>Mỗi câu trả lời được AI giám khảo chấm theo dữ kiện trên website chính thức (nhận ra đúng, mô tả đúng 0–4, nhầm lẫn).</li>' +
+          '<li>Khoảng tin cậy 95% tính theo phương pháp Wilson trên ' + (rec.n || 0) + ' câu trả lời.</li>' +
+          '<li>Kiểm tra kỹ thuật quét trang chủ và trang giới thiệu; điểm 0–4 theo 36 tiêu chí của framework.</li></ul>' +
+          '<p>' + esc(r.caveat) + '</p></div>' +
+        '<div class="card r-cta"><h2 class="r-h2" style="margin:0 0 10px">Khi khách hỏi mua, AI có đề xuất bạn không?</h2><p>Health Check chỉ hỏi về chính thương hiệu. AI Brand Audit đo cả việc AI đề xuất bạn trong tình huống mua, so với đối thủ, trên 36 tiêu chí, kèm kế hoạch 90 ngày.</p><a class="btn" href="/#dat-lich">Đặt lịch AI Brand Audit</a></div>' +
+      '</section>' +
       '<p class="print-only" style="font-size:10pt;color:#4f5f7d">brand.ai.vn – dịch vụ AI Brand Readiness của NetSpace. Báo cáo trực tuyến: ' + esc(location.origin + location.pathname) + '</p>';
     document.getElementById('pdf').addEventListener('click', function () {
       var t = document.title; document.title = 'AI-Health-Check-' + String(r.brand).replace(/[^\p{L}\p{N}]+/gu, '-') + '-' + new Date(r.date).toISOString().slice(0, 10);
+      document.querySelectorAll('details').forEach(function (d) { d.open = true; });
       window.print(); setTimeout(function () { document.title = t; }, 1000);
     });
-    document.getElementById('share').addEventListener('click', function () { var b = this; navigator.clipboard.writeText(location.href).then(function () { b.textContent = 'Đã sao chép'; }, function () { b.textContent = location.href; }); });
+    document.getElementById('share').addEventListener('click', function () { var b = this, u = location.origin + location.pathname; navigator.clipboard.writeText(u).then(function () { b.textContent = 'Đã sao chép'; }, function () { b.textContent = u; }); });
   }
 })();
 </script>
