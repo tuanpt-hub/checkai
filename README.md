@@ -133,7 +133,7 @@ Biến môi trường mới:
 | Biến | Bắt buộc | Ghi chú |
 |---|---|---|
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Có | Cloudflare Turnstile cho brand.ai.vn. Thiếu secret: production từ chối biểu mẫu |
-| `RESEND_API_KEY`, `MAIL_FROM` | Có | Ví dụ `brand.ai.vn <no-reply@brand.ai.vn>`; tên miền gửi phải được xác minh trong Resend |
+| `BREVO_API_KEY` (hoặc `RESEND_API_KEY`), `MAIL_FROM` | Có | Email qua Brevo (`api.brevo.com/v3/smtp/email`) hoặc Resend; khóa Brevo `xkeysib-…` được tự nhận kể cả khi đặt nhầm vào `RESEND_API_KEY`. `MAIL_FROM` ví dụ `brand.ai.vn <no-reply@brand.ai.vn>`; địa chỉ gửi phải được xác minh ở nhà cung cấp |
 | `SALES_EMAILS` | Có | Danh sách email sales, cách nhau bởi dấu phẩy |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Có | Bot tạo qua @BotFather; chat id của nhóm sales |
 | `SITE_URL`, `APP_URL` | Không | Mặc định `https://brand.ai.vn`, `https://app.brand.ai.vn` |
