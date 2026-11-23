@@ -113,6 +113,57 @@ Số lượt gọi cho một audit đầy đủ, 3 AI, lặp 1 lần: **123 lư�
 - Giám khảo chấm điểm là Claude, nên có thể thiên vị với câu trả lời của chính Claude. Xem lại các ô quan trọng bằng mắt trước khi gửi báo cáo cho khách.
 - Prompt hỏi mặc định chỉ yêu cầu “trả lời tiếng Việt, ngắn gọn” để gần với người dùng thật; đổi bằng biến `PROBE_SYSTEM`.
 
+## Đợt A: brand.ai.vn, AI Health Check tự phục vụ, khách tiềm năng
+
+Một Vercel project phục vụ hai tên miền:
+
+| Tên miền | Nội dung |
+|---|---|
+| `brand.ai.vn` | Landing (`public/site/home.html`), `/kiem-tra` (Health Check tự phục vụ), `/r/<mã>` (báo cáo khách nhận), robots/sitemap/llms.txt riêng |
+| `app.brand.ai.vn` (và mọi tên miền khác, kể cả `checkai.netspace.vn`) | Công cụ audit nội bộ (`public/app.html`) |
+
+Vercel luôn ưu tiên tệp có thật trước rewrite, vì vậy công cụ nằm ở `public/app.html` (không còn `public/app.html`) và `public/app-robots.txt` (không còn `public/robots.txt`); "/" được định tuyến theo tên miền trong `vercel.json`.
+
+**Luồng Health Check:** khách điền thương hiệu, website, email, đồng ý xử lý dữ liệu, qua Cloudflare Turnstile → email xác minh (Resend) → bấm link → trình duyệt chạy: quét website + 6 câu nhóm B trên từng AI (model tiết kiệm) → AI chấm → báo cáo `brand.ai.vn/r/<mã>` gửi về email khách → báo sales qua Telegram + email. Câu hỏi do máy chủ tạo, không nhận văn bản tự do; mỗi phiên có trần lượt gọi AI (hàm SQL `hc_take_call`), mỗi tên miền 1 lần/30 ngày, toàn hệ thống `HC_DAILY_LIMIT` lượt/ngày (mặc định 50).
+
+**Khách tiềm năng:** tab mới trong công cụ (`/api/leads`): danh sách, nguồn truy cập (UTM, đến từ ChatGPT/Perplexity…), tóm tắt Health Check, đổi trạng thái, ghi chú, "Tạo audit" điền sẵn thương hiệu và website. Link `app.brand.ai.vn/?lead=<id>` trong thông báo mở thẳng lead.
+
+Biến môi trường mới:
+
+| Biến | Bắt buộc | Ghi chú |
+|---|---|---|
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Có | Cloudflare Turnstile cho brand.ai.vn. Thiếu secret: production từ chối biểu mẫu |
+| `RESEND_API_KEY`, `MAIL_FROM` | Có | Ví dụ `brand.ai.vn <no-reply@brand.ai.vn>`; tên miền gửi phải được xác minh trong Resend |
+| `SALES_EMAILS` | Có | Danh sách email sales, cách nhau bởi dấu phẩy |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Có | Bot tạo qua @BotFather; chat id của nhóm sales |
+| `SITE_URL`, `APP_URL` | Không | Mặc định `https://brand.ai.vn`, `https://app.brand.ai.vn` |
+| `MAIL_REPLY_TO` | Không | Email nhận trả lời |
+| `HC_DAILY_LIMIT` | Không | Mặc định 50 |
+| `HC_ENGINES` | Không | Mặc định `claude,openai,gemini,grok,deepseek` |
+| `HC_MODEL_<ENGINE>`, `HC_JUDGE_MODEL` | Không | Model cho Health Check; mặc định là model tiết kiệm |
+| `HC_DOMAIN_COOLDOWN_DAYS` | Không | Mặc định 30 |
+| `HC_REPORT_DAYS` | Không | Hạn dùng đường dẫn báo cáo, mặc định 30 ngày |
+
+SQL: chạy `supabase/migrations/003_leads_health_checks.sql` một lần. Kiểm thử: `node test/hc.mjs` (trong `npm test`) và `python3 test/ui-site.py` (cần `npm run dev:fake`; landing chạy thử ở `/site/home.html`).
+
+### Đợt B: báo cáo chia sẻ
+
+- **Hạn dùng 30 ngày** (`HC_REPORT_DAYS`): hết hạn hoặc bị thu hồi thì `/r/<mã>` hiện thông báo kèm nút đặt lịch, không hiện dữ liệu. Tab Khách tiềm năng có "Gia hạn 30 ngày", "Thu hồi đường dẫn" (bấm 2 lần), "Mở lại".
+- **Lượt xem**: mỗi lần khách mở được ghi vào `report_views` (thiết bị, IP đã băm); cùng người mở lại trong 30 phút không tính (hàm SQL `hc_report_view`). Lượt xem đầu tiên báo Telegram cho sales. Link từ công cụ thêm `?nv=1` nên sales xem không bị tính. Trình đọc link của Zalo/Facebook không chạy JavaScript nên không bị tính.
+- **Tải PDF**: nút trên trang báo cáo dùng chức năng in của trình duyệt với bố cục in riêng (nền trắng, A4, không cắt thẻ, giữ màu thanh điểm); chạy được trên điện thoại.
+- **Ảnh xem trước khi chia sẻ**: `brand.ai.vn/r/<mã>` được rewrite tới `/api/hc?op=page` để trả sẵn thẻ `og:*`; ảnh PNG 1200×630 do `/api/hc?op=og` dựng bằng `@resvg/resvg-js` + font Nunito (`@expo-google-fonts/nunito`, ghim phiên bản). Ảnh chỉ hiện tên thương hiệu và tỷ lệ AI nhận ra; báo cáo hết hạn thì dùng ảnh chung. Không thêm hàm máy chủ (vẫn 10/12).
+- SQL: `supabase/migrations/004_report_views.sql`.
+
+## Grok và DeepSeek (qua AI Gateway)
+
+Bước "Hỏi AI" chạy tự động trên 5 AI: Claude, ChatGPT, Gemini, **Grok** và **DeepSeek**. Grok và DeepSeek chỉ chạy qua AI Gateway (cần `AI_GATEWAY_API_KEY`); không có Gateway thì hai AI này hiện "cần AI Gateway" và bị tắt.
+
+- **Grok**: model mặc định `spacexai/grok-4.20-non-reasoning` (tùy chọn `spacexai/grok-4.7`), tìm kiếm web gốc của SpaceXAI (`xai.tools.webSearch`, khoảng $5/1.000 lượt).
+- **DeepSeek**: model mặc định `deepseek/deepseek-v4.1-flash` (tùy chọn Flash Fast), tìm kiếm bằng DeepSeek Search của AI Gateway (`gateway.tools.deepseekSearch`, $0,75/1.000 lượt có kết quả). Nguồn lấy từ kết quả tìm kiếm; nguồn được coi là trích dẫn khi câu trả lời nhắc tới tên miền đó.
+- Biến môi trường tùy chọn: `AI_GATEWAY_GROK_MODEL`, `AI_GATEWAY_DEEPSEEK_MODEL`, `DEEPSEEK_SEARCH_COUNT` (mặc định 8), `PROBE_MAX_TOKENS_GROK` (3000), `PROBE_MAX_TOKENS_DEEPSEEK` (4000).
+- AI chấm điểm vẫn dùng Claude, OpenAI, Gemini. Giá trong `api/_lib/model-options.js` kiểm tra ngày 22/11/2026; đối chiếu lại trên trang model của AI Gateway trước khi báo giá cho khách.
+- Gói `@ai-sdk/xai` được ghim đúng bản `5.0.45`, dùng chung `@ai-sdk/provider-utils` với các gói AI SDK khác.
+
 ## AI Trust Blueprint – 5 trụ cột (đợt 1)
 
 Bước 6 "Công cụ cải thiện" trả lời câu hỏi: **cần thay đổi gì ở Brand, Content, PR, Data và Technology để thương hiệu thành lựa chọn đáng tin cậy trong môi trường AI**. Bản đồ và trạng thái đích do đội chuyên gia NetSpace duyệt ngày 18/11/2026; dữ liệu nằm ở `public/pillars.js` (khớp sheet "5 trụ cột" của Workbook và mục 3 sổ tay vận hành).
@@ -209,7 +260,7 @@ npm run dev        # http://localhost:3000, dùng Supabase và AI thật
 ## 11. Cấu trúc
 
 ```
-public/index.html        giao diện (một file)
+public/app.html        giao diện (một file)
 api/login.js logout.js me.js        đăng nhập, đăng xuất, thông tin phiên và cấu hình
 api/probe.js             hỏi 1 câu tới 1 AI (claude | openai | gemini)
 api/claude.js            Claude chấm điểm và viết nội dung
