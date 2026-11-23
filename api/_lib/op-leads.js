@@ -66,3 +66,20 @@ export const reportLink = route(async (req, res) => {
   if (u.status >= 300 || !Array.isArray(u.json) || !u.json[0]) throw new HttpError(502, 'db_error', 'Chưa lưu được.');
   ok(res, { expiresAt: u.json[0].report_expires_at, revoked: !!u.json[0].report_revoked });
 });
+
+/** POST /api/leads?op=remove – xóa vĩnh viễn một khách tiềm năng cùng các lượt Health Check, câu trả lời, lượt xem báo cáo (chỉ quản trị viên). */
+export const remove = route(async (req, res) => {
+  allowMethods(req, ['POST']);
+  const user = await requireUser(req, res);
+  if (!user.isAdmin) throw new HttpError(403, 'not_admin', 'Chỉ quản trị viên mới được xóa khách tiềm năng.');
+  const b = await readJson(req, 2_000);
+  if (!UUID.test(String(b.id || ''))) throw new HttpError(400, 'bad_id', 'Mã khách tiềm năng không hợp lệ.');
+  // Câu trả lời và lượt xem báo cáo tự xóa theo (on delete cascade) khi xóa lượt Health Check.
+  const h = await rest('DELETE', `health_checks?lead_id=eq.${b.id}`, { prefer: 'return=representation' });
+  if (h.status >= 300) throw new HttpError(502, 'db_error', 'Chưa xóa được dữ liệu Health Check.');
+  const r = await rest('DELETE', `leads?id=eq.${b.id}`, { prefer: 'return=representation' });
+  if (r.status >= 300) throw new HttpError(502, 'db_error', 'Chưa xóa được khách tiềm năng.');
+  if (!Array.isArray(r.json) || !r.json.length) throw new HttpError(404, 'not_found', 'Không tìm thấy khách tiềm năng.');
+  console.log('[leads] removed', b.id, 'by', user.email, 'health_checks:', Array.isArray(h.json) ? h.json.length : 0);
+  ok(res, { deleted: true, healthChecks: Array.isArray(h.json) ? h.json.length : 0 });
+});

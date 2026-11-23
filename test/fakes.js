@@ -86,7 +86,8 @@ export function startFakeWiki() {
 }
 
 export async function startFakes() {
-  const db = { audits: new Map(), usage: new Map(), sessions: new Map(), intake_links: new Map(), intake_submissions: new Map(), leads: new Map(), health_checks: new Map(), health_check_answers: new Map() };
+  const db = { audits: new Map(), usage: new Map(), sessions: new Map(), intake_links: new Map(), intake_submissions: new Map(), leads: new Map(), health_checks: new Map(), health_check_answers: new Map(), staff: new Map(),
+    authUsers: new Map(Object.entries(USERS).map(([email, password]) => [email, { id: 'u_' + email, email, password, created_at: '2026-11-01T00:00:00Z', last_sign_in_at: null, banned: false, user_metadata: {} }])) };
 
   const supabase = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x');
@@ -96,24 +97,53 @@ export async function startFakes() {
       const b = await readBody(req);
       const g = url.searchParams.get('grant_type');
       if (g === 'password') {
-        if (USERS[b.email] && USERS[b.email] === b.password) {
+        const au = db.authUsers.get(String(b.email || '').toLowerCase());
+        if (au && au.password && au.password === b.password && !au.banned) { au.last_sign_in_at = new Date().toISOString();
           const at = 'at_' + b.email + '_' + Date.now(); const rt = 'rt_' + b.email;
           db.sessions.set(at, b.email); db.sessions.set(rt, b.email);
-          return send(res, 200, { access_token: at, refresh_token: rt, expires_in: 3600, user: { email: b.email, id: 'u_' + b.email } });
+          return send(res, 200, { access_token: at, refresh_token: rt, expires_in: 3600, user: { email: b.email, id: au.id } });
         }
         return send(res, 400, { error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
       }
       if (g === 'refresh_token') {
         const email = db.sessions.get(b.refresh_token);
-        if (!email) return send(res, 400, { error_code: 'refresh_token_not_found' });
+        if (!email || !db.authUsers.has(email) || db.authUsers.get(email).banned) return send(res, 400, { error_code: 'refresh_token_not_found' });
         const at = 'at_' + email + '_' + Date.now(); db.sessions.set(at, email);
         return send(res, 200, { access_token: at, refresh_token: b.refresh_token, expires_in: 3600, user: { email, id: 'u_' + email } });
       }
     }
     if (p === '/auth/v1/user') {
       const t = (req.headers.authorization || '').replace('Bearer ', '');
-      const email = db.sessions.get(t);
-      return email ? send(res, 200, { email, id: 'u_' + email }) : send(res, 401, { msg: 'bad jwt' });
+      const email = db.sessions.get(t), au = email && db.authUsers.get(email);
+      if (!au || au.banned) return send(res, 401, { msg: 'bad jwt' });
+      if (req.method === 'PUT') { const b = await readBody(req); if (b.password) au.password = b.password; return send(res, 200, { email, id: au.id }); }
+      return send(res, 200, { email, id: au.id });
+    }
+    if (p.startsWith('/auth/v1/admin/')) {
+      // API quản trị Auth: chỉ nhận khóa bí mật.
+      const k = req.headers.apikey || '';
+      if (!k.startsWith('sb_secret_') && !k.startsWith('eyJ')) return send(res, 401, { msg: 'secret key required' });
+      const sub = p.slice('/auth/v1/admin/'.length), pub = (u) => { const { password, banned, ...x } = u; return { ...x, banned_until: banned ? '3026-01-01T00:00:00Z' : null }; };
+      const b = req.method === 'GET' || req.method === 'DELETE' ? null : await readBody(req);
+      if (sub === 'users' && req.method === 'GET') return send(res, 200, { users: [...db.authUsers.values()].map(pub) });
+      if (sub === 'users' && req.method === 'POST') {
+        const email = String(b.email || '').toLowerCase(); if (db.authUsers.has(email)) return send(res, 422, { msg: 'A user with this email address has already been registered', error_code: 'email_exists' });
+        const u = { id: 'u_' + email, email, password: b.password || null, created_at: new Date().toISOString(), last_sign_in_at: null, banned: false, user_metadata: b.user_metadata || {} }; db.authUsers.set(email, u); return send(res, 200, pub(u));
+      }
+      const m = sub.match(/^users\/(.+)$/);
+      if (m) {
+        const u = [...db.authUsers.values()].find((x) => x.id === decodeURIComponent(m[1])); if (!u) return send(res, 404, { msg: 'User not found' });
+        if (req.method === 'DELETE') { db.authUsers.delete(u.email); for (const [t, e] of db.sessions) if (e === u.email) db.sessions.delete(t); return send(res, 200, {}); }
+        if (req.method === 'PUT') { if (b.password) u.password = b.password; if (b.ban_duration) u.banned = b.ban_duration !== 'none'; if (b.user_metadata) u.user_metadata = b.user_metadata; return send(res, 200, pub(u)); }
+      }
+      if (sub === 'generate_link' && req.method === 'POST') {
+        const email = String(b.email || '').toLowerCase(); let u = db.authUsers.get(email);
+        if (b.type === 'invite') { if (u) return send(res, 422, { msg: 'A user with this email address has already been registered' }); u = { id: 'u_' + email, email, password: null, created_at: new Date().toISOString(), last_sign_in_at: null, banned: false, user_metadata: b.data || {} }; db.authUsers.set(email, u); }
+        else if (!u) return send(res, 404, { msg: 'User not found' });
+        const at = 'at_' + email + '_' + Date.now() + '_link', rt = 'rt_' + email; db.sessions.set(at, email); db.sessions.set(rt, email);
+        return send(res, 200, { ...pub(u), action_link: `${b.redirect_to}#access_token=${at}&refresh_token=${rt}&expires_in=3600&token_type=bearer&type=${b.type}` });
+      }
+      return send(res, 404, { msg: 'not found' });
     }
     if (p === '/auth/v1/logout') { const t = (req.headers.authorization || '').replace('Bearer ', ''); db.sessions.delete(t); return send(res, 204); }
     if (p.startsWith('/rest/v1/')) {
@@ -168,6 +198,20 @@ export async function startFakes() {
         if (req.method === 'PATCH') {
           const b = await readBody(req); const rows = [...t.values()].filter(match); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows.map((r) => ({ ...r })));
         }
+        if (req.method === 'DELETE') {
+          // Giống cơ sở dữ liệu thật: xóa lượt Health Check thì xóa theo câu trả lời và lượt xem (on delete cascade); xóa lead thì lượt Health Check còn lại mất liên kết (set null).
+          const rows = [...t.values()].filter(match); rows.forEach((r) => t.delete(r.id));
+          if (rest === 'health_checks') { const ids = new Set(rows.map((r) => r.id)); for (const [k, a] of db.health_check_answers) if (ids.has(a.hc_id)) db.health_check_answers.delete(k); db.report_views = (db.report_views || []).filter((v) => !ids.has(v.hc_id)); }
+          if (rest === 'leads') { const ids = new Set(rows.map((r) => r.id)); for (const h of db.health_checks.values()) if (ids.has(h.lead_id)) h.lead_id = null; }
+          return send(res, 200, rows.map((r) => ({ ...r })));
+        }
+      }
+      if (rest === 'staff') {
+        const t = db.staff, eq = url.searchParams.get('email'), key = eq && eq.startsWith('eq.') ? decodeURIComponent(eq.slice(3)) : null;
+        if (req.method === 'GET') return send(res, 200, [...t.values()].filter((r) => !key || r.email === key).map((r) => ({ ...r })));
+        if (req.method === 'POST') { const b = await readBody(req); const prev = t.get(b.email) || { role: 'member', disabled: false, must_change: false, created_at: new Date().toISOString() }; const row = { ...prev, ...b }; t.set(b.email, row); return send(res, 201, [row]); }
+        if (req.method === 'PATCH') { const b = await readBody(req); const rows = [...t.values()].filter((r) => !key || r.email === key); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows); }
+        if (req.method === 'DELETE') { const rows = [...t.values()].filter((r) => r.email === key); rows.forEach((r) => t.delete(r.email)); return send(res, 200, rows); }
       }
       if (rest === 'rpc/hc_report_view') {
         const b = await readBody(req); const h = [...db.health_checks.values()].find((r) => r.report_token === b.p_token && r.status === 'done');

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.js",
-    "test": "node test/vercel-config.mjs && node test/e2e.mjs && node test/gateway.mjs && node test/gateway-errors.mjs && node test/probe-failures.mjs && node test/probe-caps.mjs && node test/model-options.mjs && node test/model-api.mjs && node test/api-response.mjs && node test/claude-messages.mjs && node test/claude-output.mjs && node test/judge-fallback.mjs && node test/sov-evidence.mjs && node test/evidence-api.mjs && node test/intake.mjs && node test/pillars.mjs && node test/hc.mjs && node test/notify.mjs",
+    "test": "node test/vercel-config.mjs && node test/e2e.mjs && node test/gateway.mjs && node test/gateway-errors.mjs && node test/probe-failures.mjs && node test/probe-caps.mjs && node test/model-options.mjs && node test/model-api.mjs && node test/api-response.mjs && node test/claude-messages.mjs && node test/claude-output.mjs && node test/judge-fallback.mjs && node test/sov-evidence.mjs && node test/evidence-api.mjs && node test/intake.mjs && node test/pillars.mjs && node test/hc.mjs && node test/notify.mjs && node test/users.mjs && node test/access-cache.mjs",
     "dev:fake": "node test/dev-with-fakes.mjs"
   },
   "dependencies": {

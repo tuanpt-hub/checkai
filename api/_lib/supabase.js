@@ -63,3 +63,23 @@ export const rest = (method, path, { body, prefer } = {}) =>
   });
 
 export const rpc = (name, args) => rest('POST', `rpc/${name}`, { body: args });
+
+/** API quản trị Supabase Auth (khóa bí mật) – chỉ chạy ở máy chủ. */
+export const authAdmin = (method, path, body) =>
+  httpJSON(`${base()}/auth/v1/admin/${path}`, {
+    method,
+    headers: { ...keyHeaders(secKey()), 'Content-Type': 'application/json' },
+    ...(body !== undefined ? { body } : {}),
+    timeoutMs: 15000,
+    retries: 0,
+  });
+
+/** Người dùng tự đặt mật khẩu bằng phiên của mình (sau khi bấm link mời hoặc link đặt lại). */
+export const authUpdateSelf = (accessToken, body) =>
+  httpJSON(`${base()}/auth/v1/user`, {
+    method: 'PUT',
+    headers: { apikey: pubKey(), Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body,
+    timeoutMs: 15000,
+    retries: 0,
+  });
