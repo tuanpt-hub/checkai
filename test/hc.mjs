@@ -145,13 +145,35 @@ try {
     assert.equal((await call('/api/leads?op=report', { id: leadId, action: 'xoa' }, S)).status, 400);
     const l = (await call('/api/leads', null, S)).data.leads.find((x) => x.id === leadId); assert.equal(l.hc.views, 2); assert.ok(l.hc.expiresAt); assert.equal(l.hc.revoked, false);
   });
+  await t('xóa khách tiềm năng: chỉ quản trị viên; xóa kèm Health Check, câu trả lời, lượt xem', async () => {
+    const login = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'X-ABR': '1' }, body: JSON.stringify({ email: 'staff@netspace.vn', password: USERS['staff@netspace.vn'] }) });
+    const S = { Cookie: login.headers.getSetCookie().map((c) => c.split(';')[0]).join('; '), 'X-ABR': '1' };
+    const target = [...f.db.health_checks.values()].find((h) => h.report_token === repTok()), leadId = target.lead_id, hcId = target.id;
+    assert.ok([...f.db.health_check_answers.values()].some((a) => a.hc_id === hcId), 'has answers before');
+    delete process.env.ADMIN_EMAILS;
+    assert.equal((await call('/api/me', null, S)).data.isAdmin, false, 'no ADMIN_EMAILS → nobody is admin');
+    assert.equal((await call('/api/leads?op=remove', { id: leadId }, S)).status, 403);
+    process.env.ADMIN_EMAILS = 'boss@netspace.vn';
+    const r403 = await call('/api/leads?op=remove', { id: leadId }, S); assert.equal(r403.status, 403); assert.equal(r403.data.error.code, 'not_admin');
+    assert.ok(f.db.leads.has(leadId), 'nothing deleted by non-admin');
+    process.env.ADMIN_EMAILS = 'boss@netspace.vn, Staff@NetSpace.vn';
+    assert.equal((await call('/api/me', null, S)).data.isAdmin, true, 'case-insensitive list');
+    assert.equal((await call('/api/leads?op=remove', { id: 'khong-phai-uuid' }, S)).status, 400);
+    const ok1 = await call('/api/leads?op=remove', { id: leadId }, S); assert.equal(ok1.status, 200, JSON.stringify(ok1.data)); assert.equal(ok1.data.healthChecks, 1);
+    assert.ok(!f.db.leads.has(leadId)); assert.ok(!f.db.health_checks.has(hcId));
+    assert.ok(![...f.db.health_check_answers.values()].some((a) => a.hc_id === hcId), 'answers cascade');
+    assert.equal((await call('/api/hc?op=report&t=' + repTok())).status, 404, 'report link dead');
+    assert.equal((await call('/api/leads?op=remove', { id: leadId }, S)).status, 404);
+    assert.equal((await call('/api/leads?op=remove', { id: leadId })).status, 403, 'csrf header required');
+    delete process.env.ADMIN_EMAILS;
+  });
   await t('định tuyến theo tên miền: brand.ai.vn ra landing, tên miền khác ra công cụ', async () => {
     const http = await import('node:http');
     const get = (path, host) => new Promise((res) => http.get({ host: '127.0.0.1', port: server.address().port, path, headers: { Host: host } }, (r) => { let d = ''; r.on('data', (c) => (d += c)); r.on('end', () => res({ status: r.statusCode, body: d })); }));
     assert.match((await get('/', 'brand.ai.vn')).body, /brand\.ai\.vn/); assert.doesNotMatch((await get('/', 'brand.ai.vn')).body, /id="login"/);
     assert.match((await get('/', 'app.brand.ai.vn')).body, /id="login"/);
     assert.match((await get('/robots.txt', 'brand.ai.vn')).body, /Allow: \//); assert.match((await get('/robots.txt', 'app.brand.ai.vn')).body, /Disallow: \//);
-    assert.match((await get('/r/abc', 'brand.ai.vn')).body, /noindex/); assert.match((await get('/r/' + repTok(), 'brand.ai.vn')).body, /og:title" content="Kết quả AI Health Check: NetSpace/); assert.match((await get('/kiem-tra', 'brand.ai.vn')).body, /Health Check/);
+    assert.match((await get('/r/abc', 'brand.ai.vn')).body, /noindex/); assert.match((await get('/r/' + repTok(), 'brand.ai.vn')).body, /og:title/); assert.match((await get('/kiem-tra', 'brand.ai.vn')).body, /Health Check/);
   });
 } finally { server.close(); site.close(); nt.server.close(); }
 console.log(ok ? 'AI Health Check, leads, notifications, report views/expiry/preview and host routing passed.' : 'CÓ LỖI'); process.exit(ok ? 0 : 1);
