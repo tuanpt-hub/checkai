@@ -1,6 +1,6 @@
 import { route, ok, fail, allowMethods, readJson, assertCsrf, getIp, HttpError } from './util.js';
 import { authPassword } from './supabase.js';
-import { isAllowed, setSession } from './auth.js';
+import { accessFor, setSession } from './auth.js';
 
 const BAD = 'Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được cấp quyền.';
 const tries = new Map(); // làm chậm thử mật khẩu hàng loạt (best-effort theo từng instance)
@@ -19,7 +19,7 @@ export default route(async (req, res) => {
   if (rec.length >= 8) throw new HttpError(429, 'too_many_attempts', 'Thử đăng nhập quá nhiều lần. Đợi 15 phút rồi thử lại.');
 
   // Kiểm tra allowlist TRƯỚC khi gọi Supabase; trả cùng một thông báo để không lộ ai được phép.
-  const r = isAllowed(email) ? await authPassword(email, password) : { status: 400 };
+  const r = (await accessFor(email)).allowed ? await authPassword(email, password) : { status: 400 };
   if (r.status !== 200 || !r.json || !r.json.access_token) {
     rec.push(now);
     tries.set(key, rec);
@@ -27,7 +27,7 @@ export default route(async (req, res) => {
     return fail(res, 401, 'invalid_credentials', BAD);
   }
   const userEmail = r.json.user && r.json.user.email;
-  if (!isAllowed(userEmail)) return fail(res, 401, 'invalid_credentials', BAD);
+  if (!(await accessFor(userEmail)).allowed) return fail(res, 401, 'invalid_credentials', BAD);
   tries.delete(key);
   setSession(res, r.json);
   ok(res, { email: String(userEmail).toLowerCase() });

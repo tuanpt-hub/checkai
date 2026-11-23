@@ -12,6 +12,10 @@ export default route(async (req, res) => {
   const used = await getUsage(user.email).catch(() => null);
   ok(res, {
     email: user.email,
+    isAdmin: user.isAdmin,
+    role: user.role,
+    name: user.name,
+    mustChange: user.mustChange,
     used,
     limit: dailyLimit(),
     engines: configured(),
