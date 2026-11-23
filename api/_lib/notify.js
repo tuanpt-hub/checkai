@@ -17,19 +17,42 @@ export async function telegram(text) {
   } catch (e) { console.error('[notify] telegram', e && e.message); return { sent: false }; }
 }
 
+/** Nhà cung cấp email: Brevo (BREVO_API_KEY, hoặc khóa "xkeysib-…" lỡ đặt vào RESEND_API_KEY) hoặc Resend. */
+export function mailProvider() {
+  const brevo = process.env.BREVO_API_KEY || (/^xkeysib-/.test(process.env.RESEND_API_KEY || '') ? process.env.RESEND_API_KEY : '');
+  if (brevo) return { name: 'brevo', key: brevo.trim() };
+  if (process.env.RESEND_API_KEY) return { name: 'resend', key: process.env.RESEND_API_KEY.trim() };
+  return null;
+}
+/** "brand.ai.vn <no-reply@brand.ai.vn>" → { name, email } */
+export function parseFrom(s) {
+  const m = String(s || '').match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  return m ? { ...(m[1] ? { name: m[1] } : {}), email: m[2].trim() } : { email: String(s || '').trim() };
+}
+
 export async function email({ to, subject, html, text, replyTo }) {
-  const key = process.env.RESEND_API_KEY, list = (Array.isArray(to) ? to : [to]).filter(Boolean);
-  if (!key || !list.length) return { sent: false, reason: 'not_configured' };
-  const url = process.env.RESEND_API_URL || 'https://api.resend.com/emails';
+  const p = mailProvider(), list = (Array.isArray(to) ? to : [to]).filter(Boolean);
+  if (!p || !list.length) return { sent: false, reason: 'not_configured' };
+  const from = process.env.MAIL_FROM || 'brand.ai.vn <no-reply@brand.ai.vn>', reply = replyTo || process.env.MAIL_REPLY_TO;
   try {
-    const r = await httpJSON(url, {
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: { from: process.env.MAIL_FROM || 'brand.ai.vn <no-reply@brand.ai.vn>', to: list, subject, html, text, ...(replyTo || process.env.MAIL_REPLY_TO ? { reply_to: replyTo || process.env.MAIL_REPLY_TO } : {}) },
-      timeoutMs: 10000, retries: 1,
-    });
-    if (r.status >= 300) console.error('[notify] resend', r.status, String(r.text || '').slice(0, 200));
-    return { sent: r.status < 300 };
-  } catch (e) { console.error('[notify] resend', e && e.message); return { sent: false }; }
+    let r;
+    if (p.name === 'brevo') {
+      // Brevo chỉ nhận một kiểu nội dung mỗi lần gửi: dùng htmlContent.
+      r = await httpJSON(process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email', {
+        headers: { 'api-key': p.key, accept: 'application/json', 'Content-Type': 'application/json' },
+        body: { sender: parseFrom(from), to: list.map((e) => ({ email: e })), subject, htmlContent: html, ...(reply ? { replyTo: parseFrom(reply) } : {}) },
+        timeoutMs: 10000, retries: 1,
+      });
+    } else {
+      r = await httpJSON(process.env.RESEND_API_URL || 'https://api.resend.com/emails', {
+        headers: { Authorization: `Bearer ${p.key}`, 'Content-Type': 'application/json' },
+        body: { from, to: list, subject, html, text, ...(reply ? { reply_to: reply } : {}) },
+        timeoutMs: 10000, retries: 1,
+      });
+    }
+    if (r.status >= 300) console.error('[notify]', p.name, r.status, String(r.text || '').slice(0, 300));
+    return { sent: r.status < 300, provider: p.name };
+  } catch (e) { console.error('[notify]', p.name, e && e.message); return { sent: false, provider: p.name }; }
 }
 
 /** Khung email đơn giản, chữ rõ, có bản text thuần. */
