@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+const html=fs.readFileSync(new URL('../public/app.html',import.meta.url),'utf8');
 const pool=html.slice(html.indexOf('async function pool('),html.indexOf('function selEngines('));
 const run=html.slice(html.indexOf('async function runProbe('),html.indexOf('function engineStats('));
 // mode: 'always' (Claude luôn lỗi) | 'late' (lượt đầu thành công, sau đó lỗi) | 'flaky' (chỉ lượt đầu lỗi 1 lần) | 'truncated' (Gemini bị cắt)

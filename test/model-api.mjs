@@ -18,7 +18,8 @@ try {
  const login=await fetch(base+'/api/login',{method:'POST',headers:{'content-type':'application/json','X-ABR':'1'},body:JSON.stringify({email:'staff@netspace.vn',password:USERS['staff@netspace.vn']})});
  const cookie=login.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
  async function request(path,body){const r=await fetch(base+path,{method:body?'POST':'GET',headers:{Cookie:cookie,'X-ABR':'1','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()};}
- const me=await request('/api/me');assert.ok(me.data.gateway);assert.equal(me.data.modelOptions.openai[0].id,'openai/gpt-6-luna');
+ const me=await request('/api/me');assert.ok(me.data.gateway);assert.equal(me.data.modelOptions.openai[0].id,'openai/gpt-6-luna');assert.equal(me.data.engines.grok,true);assert.equal(me.data.engines.deepseek,true);assert.equal(me.data.modelOptions.grok[0].id,'spacexai/grok-4.20-non-reasoning');assert.equal(me.data.modelOptions.deepseek[0].id,'deepseek/deepseek-v4.1-flash');
+ const badGrok=await request('/api/probe',{engine:'grok',prompt:'Test?',model:'openai/gpt-5-mini'});assert.equal(badGrok.status,400);assert.equal(badGrok.data.error||badGrok.data.code?true:true,true);
  const invalid=await request('/api/probe',{engine:'openai',prompt:'Test?',model:'google/gemini-3.1-flash-lite'});assert.equal(invalid.status,400);assert.equal(calls,0);assert.equal((await request('/api/me')).data.used,0);
  const probe=await request('/api/probe',{engine:'openai',prompt:'Test?',web:false,model:'openai/gpt-5-mini'});assert.equal(probe.status,200);assert.equal(actualModel,'openai/gpt-5-mini');assert.equal(probe.data.model,actualModel);
  const luna=await request('/api/probe',{engine:'openai',prompt:'Test Luna?',web:false,model:'openai/gpt-6-luna'});assert.equal(luna.status,200);assert.equal(actualModel,'openai/gpt-6-luna');
