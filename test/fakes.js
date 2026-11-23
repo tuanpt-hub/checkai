@@ -270,7 +270,11 @@ export async function startFakeNotify() {
     if (u.pathname === '/turnstile') { sent.captcha.push(b); return send(res, 200, { success: b && b.secret === 'test-turnstile-secret' && b.response === 'ok-token' }); }
     if (u.pathname === '/emails') { if (req.headers.authorization !== 'Bearer test-resend') return send(res, 401, { message: 'bad key' }); sent.emails.push(b); return send(res, 200, { id: 'em_' + sent.emails.length }); }
     if (u.pathname === '/last-email') return send(res, 200, sent.emails.at(-1) || null);
-    if (/^\/bot[^/]+\/sendMessage$/.test(u.pathname)) { sent.telegram.push({ path: u.pathname, ...b }); return send(res, 200, { ok: true }); }
+    if (/^\/bot[^/]+\/sendMessage$/.test(u.pathname)) {
+      // Giống Telegram thật: thiếu Content-Type JSON thì không đọc được nội dung.
+      if (!String(req.headers['content-type'] || '').includes('application/json') || !b || !b.text) return send(res, 400, { ok: false, error_code: 400, description: 'Bad Request: message text is empty' });
+      sent.telegram.push({ path: u.pathname, ...b }); return send(res, 200, { ok: true });
+    }
     send(res, 404, {});
   });
   await new Promise((r) => s.listen(0, '127.0.0.1', r));
