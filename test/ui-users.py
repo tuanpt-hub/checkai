@@ -35,7 +35,7 @@ async def main():
         await P.fill('#pwNew', 'ngan'); await P.fill('#pwNew2', 'ngan'); await P.click('#pwBtnGo')
         check("chặn mật khẩu yếu", "10 ký tự" in await P.inner_text('#pwErr'))
         await P.fill('#pwNew', 'ChiHoa-2026-ok'); await P.fill('#pwNew2', 'ChiHoa-2026-ok'); await P.click('#pwBtnGo'); await P.wait_for_selector('#app:not([hidden])', timeout=10000)
-        check("đặt xong vào thẳng công cụ; nhân viên không thấy mục Người dùng", "partner@gmail.com" in await P.inner_text('#userChip') and not await P.is_visible('#adminNav [data-tab="users"]'))
+        check("đặt xong vào thẳng công cụ; nhân viên không thấy mục Người dùng", await P.evaluate("me.email") == "partner@gmail.com" and await P.evaluate("me.isAdmin") is False and await P.evaluate("!document.querySelector('#adminNav [data-tab=users]')"))
         print("Mật khẩu tạm")
         await A.check('input[name=uMethod][value=password]'); await A.wait_for_selector('#uPw')
         await A.fill('#uEmail', 'ctv@abc.com'); await A.fill('#uName', 'Cộng tác viên'); await A.click('[data-act="uGen"]'); temp = await A.input_value('#uPw')
