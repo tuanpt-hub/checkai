@@ -17,6 +17,11 @@ export default route(async (req, res) => {
   const target = normalizeTarget(b.url);
   const legal = String(b.legal || '').slice(0, 200);
   await bump(user.email, 1);
+  ok(res, await runScan(target, legal));
+});
+
+/** Quét một website (dùng chung cho công cụ nội bộ và AI Health Check công khai). */
+export async function runScan(target, legal = '') {
   const at = new Date().toISOString();
 
   const home = await safeFetch(target.href);
@@ -53,11 +58,11 @@ export default route(async (req, res) => {
   const aboutA = page(aboutR) ? analyzeHtml(aboutR.text, aboutR.url, { legal }) : null;
   const pack = (r, a) => a ? { url: r.url, status: r.status, ms: r.ms, bytes: r.bytes, xRobots: (r.headers && r.headers.get('x-robots-tag')) || '', ...a, dates: { ...a.dates, lastModified: lastModified(r) } } : (r ? { url: r.url, status: r.status, error: r.error || null } : null);
 
-  ok(res, {
+  return {
     at, url: target.href, finalUrl, origin, https: finalUrl.startsWith('https://'), userAgent: UA,
     home: pack(home, homeA), about: aboutR ? pack(aboutR, aboutA) : null,
     robots: { found: robotsFound, status: robotsR.status, sitemaps: parsed.sitemaps.slice(0, 10), bots },
     wafTest: { base: wafR[0].status, bots: Object.fromEntries(Object.keys(BOT_UA).map((k, i) => [k, wafR[i + 1].status])) },
     sitemap, llms: { found: llmsR.status === 200 && !/<html/i.test(llmsR.text || '') && (llmsR.text || '').trim().length > 20, status: llmsR.status },
-  });
-});
+  };
+}

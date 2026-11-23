@@ -1,5 +1,5 @@
 import { HttpError, httpJSON, envInt } from './util.js';
-import { gatewayEnabled, gatewayModels, askGateway } from './gateway.js';
+import { gatewayEnabled, gatewayModels, askGateway, GATEWAY_ONLY } from './gateway.js';
 import { gatewayFailure } from './gateway-errors.js';
 import { searchLocation } from './search-location.js';
 import { claudeThinking, claudeOutputError } from './claude-output.js';
@@ -15,6 +15,8 @@ export const configured = () => ({
   claude: gatewayEnabled() || !!process.env.ANTHROPIC_API_KEY,
   openai: gatewayEnabled() || !!process.env.OPENAI_API_KEY,
   gemini: gatewayEnabled() || !!process.env.GEMINI_API_KEY,
+  grok: gatewayEnabled(),
+  deepseek: gatewayEnabled(),
 });
 
 const baseUrl = (envName, def) => (process.env[envName] || def).replace(/\/$/, '');
@@ -229,5 +231,10 @@ export async function ask(engine, opts) {
   if (engine === 'claude') return askClaude({ ...opts, model: opts.model || m.claude });
   if (engine === 'openai') return askOpenAI({ ...opts, model: opts.model || m.openai });
   if (engine === 'gemini') return askGemini({ ...opts, model: opts.model || m.gemini });
+  if (GATEWAY_ONLY.includes(engine)) {
+    if (!gatewayEnabled()) throw new HttpError(503, 'not_configured', 'Grok và DeepSeek chạy qua AI Gateway: cần cấu hình AI_GATEWAY_API_KEY.');
+    const { prompt, system, web, maxTokens, deadline, maxRetries } = opts;
+    return askGateway(engine, { prompt, system, web, maxTokens, model: opts.model || m[engine], deadline, maxRetries });
+  }
   throw new HttpError(400, 'bad_engine', 'AI không được hỗ trợ.');
 }
