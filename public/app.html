@@ -495,7 +495,7 @@ function noteAiResult(r,a){noteUsage(r);if(a){a.aiRuns=a.aiRuns||[];a.aiRuns.pus
  const box=$("#aiFallbackNotice");if(box&&r.fallbackUsed){box.hidden=false;box.textContent="Model đang chọn chưa hoàn tất yêu cầu. Đã chuyển sang "+r.model+" để chấm hoặc soạn nội dung. Các lượt thử thêm được tính vào hạn mức và có thể phát sinh phí."}}
 
 function setBusy(k,msg){if(k)clearAiNotice();busy=k?{k,msg,pct:null}:null;render()}
-function progress(msg,pct){if(!busy)return;busy.msg=msg;busy.pct=pct;const box=document.querySelector('[data-busy="'+busy.k+'"]');if(box){const m=box.querySelector(".bmsg");if(m)m.textContent=msg;const i=box.querySelector(".pbar i");if(i&&pct!=null)i.style.width=pct+"%"}}
+function progress(msg,pct){if(!busy)return;busy.msg=msg;busy.pct=pct;const box=document.querySelector('[data-busy="'+busy.k+'"]');if(box){const m=box.querySelector(".bmsg");if(m)m.textContent=msg;const i=box.querySelector(".ait-bar i, .pbar i");if(i&&pct!=null)i.style.width=pct+"%"}}
 async function pool(items,n,fn){let i=0;const w=Array.from({length:Math.min(n,items.length)},async()=>{while(i<items.length&&!stopFlag){const it=items[i++];await fn(it)}});await Promise.all(w)}
 function selEngines(){return AUTO.filter(e=>runCfg.engines.includes(e)&&me&&me.engines[ENGMAP[e]])}
 async function runProbe(groups){
@@ -512,7 +512,7 @@ async function runProbe(groups){
   try{if(a._v==null||dirty.has(a.id))await saveAudit(a.id);
     const r=await api("/api/probe?op=create",{method:"POST",body:{auditId:a.id,kind:"probe",items,params:{label:"Hỏi AI nhóm "+groups.join(", "),feature:"probe",
       judge:{truth:truth(a),brand:a.profile.brand||"",base:models.judge,models:Object.fromEntries(engines.map(e=>[ENGMAP[e],judgeFor(e,models.judge)]))},meta:{web,reps,groups,engines}}}});
-    busy=null;upsertJob(a.id,r.job);flash.probeOk=`Đã giao ${items.length} lượt hỏi cho máy chủ chạy nền. Có thể đóng tab hoặc làm việc khác; kết quả tự gộp vào audit khi xong.`;pollJobs()}
+    busy=null;upsertJob(a.id,r.job);flash.probeOk="";pollJobs()}
   catch(e){busy=null;if(e.code==="job_running")loadJobs(a);if(e.code!=="unauthorized")flash.probe=emsg(e)||"Chưa giao được việc."}
   render()}
 /* ---------- Việc AI chạy nền (máy chủ) ---------- */
@@ -561,7 +561,7 @@ async function runGen(a,feature,calls,meta){const F=GEN_FEATURE[feature],kind="g
   flash[F.flash]="";flash[F.flash+"Ok"]="";busy={k:F.flash,msg:"Đang giao việc cho máy chủ…",pct:null};render();
   try{if(a._v==null||dirty.has(a.id))await saveAudit(a.id);
     const r=await api("/api/probe?op=create",{method:"POST",body:{auditId:a.id,kind,items:calls,params:{label:F.label,feature,meta:meta||null}}});
-    busy=null;upsertJob(a.id,r.job);flash[F.flash+"Ok"]=`Đã giao ${calls.length} lượt AI cho máy chủ chạy nền. Có thể đóng tab hoặc làm việc khác; kết quả tự cập nhật khi xong.`;pollJobs()}
+    busy=null;upsertJob(a.id,r.job);flash[F.flash+"Ok"]="";pollJobs()}
   catch(e){busy=null;if(e.code==="job_running")loadJobs(a);if(e.code!=="unauthorized")flash[F.flash]=emsg(e)||"Chưa giao được việc."}
   keepScroll(render)}
 const clean31=r=>({s31:clamp(r.s31,0,4,null),why31:String(r.why31||""),has:r.has||{},vague:Array.isArray(r.vague)?r.vague.map(String):[],rewrite:String(r.rewrite||""),s36:clamp(r.s36,0,4,null),why36:String(r.why36||""),claims:Array.isArray(r.claims)?r.claims.map(c=>({claim:String(c.claim||""),loai:String(c.loai||"")})):[]});
@@ -613,13 +613,40 @@ async function applyGenJob(a,job){applying.add(job.id);let res;
     if(a!==A()&&out.changed)setStatus(`${F.label} cho “${a.profile.brand||a.id}” đã xong.`)}
   catch(e){await api("/api/probe?op=unapply",{method:"POST",body:{id:job.id}}).catch(()=>{});flash[F.flash]="Chưa cập nhật được kết quả chạy nền: "+(e.message||e)}
   finally{applying.delete(job.id)}}
-function genJobBox(a,feature){a=a||A();const j=activeJob(a,"gen:"+feature);if(!j)return "";
-  return `<div class="note job-box" role="status" aria-live="polite"><div class="bline"><span class="bmsg"><b>Đang chạy nền trên máy chủ</b> · ${j.status==="queued"?"đang chờ bắt đầu":`đã xong ${j.done||0}/${j.total} lượt AI`}</span><button data-act="jobCancel" data-id="${j.id}" class="ghost" style="padding:2px 10px">Dừng</button></div><div class="pbar"><i style="width:${Math.round((j.done||0)/Math.max(1,j.total||1)*100)}%"></i></div><p class="small muted" style="margin:6px 0 0">Có thể đóng tab hoặc chuyển trang; kết quả tự cập nhật vào audit khi xong${j.createdBy&&me&&j.createdBy!==me.email?" · do "+esc(j.createdBy)+" khởi chạy":""}.</p></div>`}
+function genJobBox(a,feature){a=a||A();const j=activeJob(a,"gen:"+feature);if(!j)return "";const queued=j.status==="queued"||!j.startedAt,F=GEN_FEATURE[feature]||{};
+  const steps=[{t:"Soạn bằng AI",st:queued?"todo":"active",n:j.done||0,of:j.total,u:"lượt",state:"AI đang xử lý"},{t:"Cập nhật audit",st:"todo"}];
+  return aiTask(j,{label:F.label||j.label||"Tác vụ AI",steps,pct:queued?0:Math.round((j.done||0)/Math.max(1,j.total||1)*95),unit:"lượt"})}
 const TAB_JOBS={profile:["gen:lists","gen:comp"],probe:["probe","gen:svar","gen:paste"],score:["gen:score","gen:content","gen:sources"],result:["gen:text-summary","gen:text-boiler","gen:text-faq"],fix:["gen:bp","gen:plan"]};
 function tabJob(k){const a=A();return !!(a&&(TAB_JOBS[k]||[]).some(kind=>activeJob(a,kind)))}
-function jobBox(a){const j=activeJob(a,"probe");if(!j)return "";const s=j.summary||{},judging=j.stage==="judge";
-  const pct=judging?70+Math.round((s.judgeDone||0)/Math.max(1,s.judgeTotal||1)*30):Math.round((j.done||0)/Math.max(1,j.total||1)*70);
-  return `<div class="note job-box" role="status" aria-live="polite"><div class="bline"><span class="bmsg"><b>Đang chạy nền trên máy chủ</b> · ${j.status==="queued"?"đang chờ bắt đầu":judging?`đang chấm ${s.judgeDone||0}/${s.judgeTotal||0} lô`:`đã hỏi ${j.done||0}/${j.total} lượt`}</span><button data-act="jobCancel" data-id="${j.id}" class="ghost" style="padding:2px 10px">Dừng</button></div><div class="pbar"><i style="width:${pct}%"></i></div><p class="small muted" style="margin:6px 0 0">Có thể đóng tab hoặc chuyển trang; kết quả tự gộp vào audit khi xong${j.createdBy&&me&&j.createdBy!==me.email?" · do "+esc(j.createdBy)+" khởi chạy":""}.</p></div>`}
+/* ---------- Thẻ tiến trình AI (dùng chung cho mọi việc chạy nền) ---------- */
+const AIT_ICON={done:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'};
+const fmtDur=s=>{s=Math.max(0,Math.round(s));const m=Math.floor(s/60);return m>=60?`${Math.floor(m/60)} giờ ${m%60} phút`:m?`${m}:${String(s%60).padStart(2,"0")}`:`${s} giây`};
+function aiTask(j,{label,steps,pct,unit}){
+  const queued=j.status==="queued"||!j.startedAt,active=steps.find(s=>s.st==="active"),since=j.startedAt||j.createdAt;
+  const el=(Date.now()-Date.parse(since))/1000,cur=active&&active.n!=null&&active.of?active:null,stepEl=cur&&cur.from?(Date.now()-Date.parse(cur.from))/1000:el;
+  const eta=!queued&&cur&&cur.n>=2&&cur.n<cur.of&&stepEl>0?(cur.of-cur.n)/(cur.n/stepEl):null;
+  const inv=Object.fromEntries(Object.entries(ENGMAP).map(([k,v])=>[v,k])),halted=((j.summary||{}).halted||[]).map(e=>inv[e]||e);
+  const state=queued?"Đang chờ máy chủ nhận việc":(active?active.state:"Đang hoàn tất");
+  return `<section class="ait" role="status" aria-live="polite" aria-label="Tiến trình: ${esc(label)}">
+  <div class="ait-head"><span class="ait-orb${queued?" wait":""}" aria-hidden="true"><i></i></span>
+    <div class="ait-title"><b>${esc(label)}</b><span class="ait-state"><i aria-hidden="true"></i>${esc(state)}</span></div>
+    <button class="ait-stop" data-act="jobCancel" data-id="${j.id}" aria-label="Dừng việc ${esc(label)}">Dừng</button></div>
+  <ol class="ait-steps" style="--n:${steps.length}">${steps.map((s,i)=>`<li class="${s.st}"><span class="ait-node" aria-hidden="true">${s.st==="done"?AIT_ICON.done:i+1}</span><span class="ait-st"><b>${esc(s.t)}</b><small>${s.st==="done"?"xong":s.st==="active"?(s.of?`${s.n}/${s.of} ${s.u||unit}`:"đang chạy"):"chờ"}</small></span></li>`).join("")}</ol>
+  <div class="ait-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Tiến độ ${esc(label)}"><i style="width:${Math.max(2,pct)}%"></i></div>
+  <div class="ait-meta"><span class="ait-pct">${pct}<small>%</small></span>
+    <span class="ait-kv"><small>Đã chạy</small><b data-since="${esc(since)}">${fmtDur(el)}</b></span>
+    <span class="ait-kv"><small>Ước tính còn</small><b>${eta!=null&&isFinite(eta)?"~"+fmtDur(eta):queued?"—":"đang tính"}</b></span>
+    ${halted.length?`<span class="ait-warn" title="Các AI này gặp lỗi nghiêm trọng nên đã dừng gửi câu hỏi">Dừng gửi: ${esc(halted.join(", "))}</span>`:""}</div>
+  <p class="ait-foot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.1 4.5 4.5 0 0 0 7 18Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Đang chạy trên máy chủ · có thể đóng tab hoặc chuyển trang, kết quả tự cập nhật vào audit khi xong${j.createdBy&&me&&j.createdBy!==me.email?" · do "+esc(j.createdBy)+" khởi chạy":""}.</p>
+</section>`}
+/* Đồng hồ "đã chạy" nhảy từng giây mà không vẽ lại cả trang */
+setInterval(()=>{document.querySelectorAll(".ait [data-since]").forEach(e=>{e.textContent=fmtDur((Date.now()-Date.parse(e.dataset.since))/1000)})},1000);
+function jobBox(a){const j=activeJob(a,"probe");if(!j)return "";const s=j.summary||{},judging=j.stage==="judge",queued=j.status==="queued"||!j.startedAt;
+  const steps=[{t:"Hỏi AI",st:queued?"todo":judging?"done":"active",n:j.done||0,of:j.total,u:"lượt",state:"Đang hỏi các AI"},
+    {t:"Chấm điểm",st:judging?"active":"todo",n:s.judgeDone||0,of:s.judgeTotal||0,u:"lô",state:"Đang chấm câu trả lời",from:s.judgeAt||null},
+    {t:"Gộp vào audit",st:"todo"}];
+  const pct=queued?0:judging?70+Math.round((s.judgeDone||0)/Math.max(1,s.judgeTotal||1)*27):Math.round((j.done||0)/Math.max(1,j.total||1)*70);
+  return aiTask(j,{label:j.label||"Hỏi AI",steps,pct,unit:"lượt"})}
 function mergeProbeResults(a,bag,ver,{web,judgeBase}){const models={judge:judgeBase};
   const verdict=it=>{const v=ver.get(it)||{},g=it.p.g,men=it.m||v.mentioned===true;let code;
     if(g==="B")code=v.knows===false?0:clamp(v.code,0,3,it.m?2:0);else code=men?clamp(v.code,1,3,2):0;
@@ -871,7 +898,7 @@ function chrome(){const a=A(),pu=$("#pulse");const copy=PAGE_COPY[tab];$("#pageT
     pu.hidden=false;pu.innerHTML=k("result","Điểm sẵn sàng",t.prov==null?"—":Math.round(t.prov),t.level||"",t.prov==null?"Chưa chấm tiêu chí nào":"Tạm tính, thang 100")+k("score","Độ phủ audit",Math.round(t.n/36*100)+"%","",t.n+"/36 tiêu chí đã chấm")+k("probe","AI nhận ra tên",pc(ps.rate.B)==="chưa đo"?"—":pc(ps.rate.B),"",ps.n.B?ps.n.B+" lượt hỏi thẳng tên":"Chưa hỏi AI")+k("probe","AI đề xuất khi mua",pc(ps.rate.S)==="chưa đo"?"—":pc(ps.rate.S),"",ps.n.S?ps.n.S+" lượt tình huống mua":"Chưa hỏi AI")}
   else{pu.hidden=true}
   syncLocks();$("#steps").innerHTML=STEPS.map(([k,t],i)=>`<button data-tab="${k}" aria-current="${k===tab}">${navIcon(k)}<span>${k==="fix"?"Công cụ cải thiện":t}</span><small${tabJob(k)?' class="job-run" title="Đang chạy nền"':""}>${tabJob(k)?"⟳":"0"+(i+1)}</small></button>`).join("");$("#adminLabel").hidden=!(me&&me.isAdmin);$("#adminNav").innerHTML=me&&me.isAdmin?`<button data-tab="users" aria-current="${tab==="users"}">${navIcon("users")}<span>Người dùng</span></button>`:"";$("#leadNav").innerHTML=`<button data-tab="leads" aria-current="${tab==="leads"}">${navIcon("leads")}<span>Khách tiềm năng</span><small>${leadsState.list?leadsState.list.filter(l=>l.status==="new").length||"":""}</small></button>`}
-function busyBox(k){return busy&&busy.k===k?`<div class="note" role="status" data-busy="${k}"><div class="bline"><span class="bmsg">${esc(busy.msg)}</span><button data-act="stop" class="ghost" style="padding:2px 10px">Dừng</button></div>${busy.pct!=null?`<div class="pbar"><i style="width:${busy.pct}%"></i></div>`:""}</div>`:""}
+function busyBox(k){return busy&&busy.k===k?`<section class="ait ait-lite" role="status" aria-live="polite" data-busy="${k}"><div class="ait-head"><span class="ait-orb" aria-hidden="true"><i></i></span><div class="ait-title"><b class="bmsg">${esc(busy.msg)}</b></div><button data-act="stop" class="ait-stop">Dừng</button></div>${busy.pct!=null?`<div class="ait-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${busy.pct}"><i style="width:${busy.pct}%"></i></div>`:""}</section>`:""}
 const fl=k=>flash[k]?`<p class="err" role="alert">${esc(flash[k])}</p>`:"";
 const fo=k=>flash[k+"Ok"]?`<div class="note okbox" role="status">${esc(flash[k+"Ok"])}</div>`:"";
 const aiOff=()=>canJudge()?"":`<div class="note warnbox">Chưa có model khả dụng để chấm hoặc soạn nội dung. Kiểm tra AI_GATEWAY_API_KEY hoặc key của ít nhất một nhà cung cấp, rồi Redeploy.</div>`;
