@@ -217,7 +217,7 @@ async function processJob(job, deadline) {
       if (left.length) { await release(job, { summary: { ...sum, halted: [...halted] }, done }); return 'yield'; }  // còn lượt của máy chủ khác
       if (job.kind === 'probe' && stage === 'ask') {
         const n = await buildJudge(job);
-        job.stage = 'judge'; sum.judgeTotal = n; sum.judgeDone = 0;
+        job.stage = 'judge'; sum.judgeTotal = n; sum.judgeDone = 0; sum.judgeAt = nowIso();
         await rest('PATCH', `ai_jobs?id=eq.${job.id}`, { body: { stage: 'judge', summary: { ...sum, halted: [...halted] }, done, heartbeat_at: nowIso(), lock_until: new Date(Date.now() + lockSecs() * 1000).toISOString() } });
         continue;
       }
