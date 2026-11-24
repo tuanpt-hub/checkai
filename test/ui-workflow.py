@@ -30,7 +30,7 @@ async def main():
 
         print("Bước 1 – Hồ sơ: đối thủ")
         await pg.click('nav [data-tab="profile"]'); await pg.wait_for_timeout(400)
-        await pg.click('[data-act="compAI"]'); await pg.wait_for_function("!busy", timeout=20000); await pg.wait_for_timeout(200)
+        await run_gen(pg, '[data-act="compAI"]', 'gen:comp'); await pg.wait_for_timeout(200)
         check("AI gợi ý đối thủ theo ngành", await pg.query_selector('[data-act="compOk"][data-name="Yeah1"]') is not None)
         await pg.click('[data-act="compOk"][data-name="Yeah1"]'); await pg.wait_for_timeout(200)
         await pg.fill('#compNew', 'Dinos'); await pg.click('[data-act="compAdd"]'); await pg.wait_for_timeout(200)
