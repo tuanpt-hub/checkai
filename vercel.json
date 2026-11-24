@@ -112,6 +112,10 @@
       "destination": "/site/llms.txt"
     },
     {
+      "source": "/ho-so",
+      "destination": "/intake"
+    },
+    {
       "source": "/",
       "destination": "/app"
     },
@@ -197,6 +201,25 @@
     },
     {
       "source": "/r/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "brand.ai.vn"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/(ho-so|intake)",
       "has": [
         {
           "type": "host",
