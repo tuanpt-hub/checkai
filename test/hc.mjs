@@ -173,6 +173,9 @@ try {
     assert.match((await get('/', 'brand.ai.vn')).body, /brand\.ai\.vn/); assert.doesNotMatch((await get('/', 'brand.ai.vn')).body, /id="login"/);
     assert.match((await get('/', 'app.brand.ai.vn')).body, /id="login"/);
     assert.match((await get('/robots.txt', 'brand.ai.vn')).body, /Allow: \//); assert.match((await get('/robots.txt', 'app.brand.ai.vn')).body, /Disallow: \//);
+    const hs = await get('/ho-so', 'brand.ai.vn'); assert.equal(hs.status, 200); assert.match(hs.body, /Hồ sơ thương hiệu – brand\.ai\.vn/); assert.match(hs.body, /noindex/);
+    assert.equal((await get('/intake', 'brand.ai.vn')).status, 200, 'old /intake path still works');
+    const { intakeBase } = await import('../api/_lib/op-me.js'); assert.equal(intakeBase(), 'https://brand.ai.vn/ho-so');
     assert.match((await get('/r/abc', 'brand.ai.vn')).body, /noindex/); assert.match((await get('/r/' + repTok(), 'brand.ai.vn')).body, /og:title/); assert.match((await get('/kiem-tra', 'brand.ai.vn')).body, /Health Check/);
   });
 } finally { server.close(); site.close(); nt.server.close(); }

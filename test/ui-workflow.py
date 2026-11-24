@@ -1,3 +1,4 @@
+import re
 """Kiểm thử trình duyệt cho quy trình 6 bước: thứ tự bước, đối thủ ở Hồ sơ, link thương hiệu tự nhập + hàng chờ duyệt,
 chấm tự động (quy tắc + AI cần duyệt, không ghi đè điểm chuyên viên, chấm lại theo lớp), kế hoạch hành động.
 Chạy:  npm run dev:fake   rồi   python3 test/ui-workflow.py"""
@@ -32,7 +33,7 @@ async def main():
         print("Bước 1 – Hồ sơ: link cho thương hiệu tự nhập")
         await saved(pg)
         await pg.click('[data-act="intakeNew"]'); await pg.wait_for_selector('#intakeUrl', timeout=15000)
-        link = await pg.inner_text('#intakeUrl'); check("tạo link có token trong phần # của URL", '/intake#t=' in link, link)
+        link = await pg.inner_text('#intakeUrl'); check("tạo link có token trong phần # của URL, dùng địa chỉ /ho-so công khai", re.search(r'/ho-so#t=[A-Za-z0-9_-]{20,}', link), link)
         brand = await ctx.browser.new_context(viewport={"width": 390, "height": 840}); bp = await brand.new_page()
         bp.on('pageerror', lambda e: errs.append('intake: ' + str(e)))
         await bp.goto(link); await bp.wait_for_selector('#form:not([hidden])', timeout=15000)
