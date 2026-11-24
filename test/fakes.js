@@ -182,6 +182,7 @@ export async function startFakes() {
         const match = (row) => filters.every(([k, op, v]) => op === 'eq' ? val(row, k) === v : op === 'gte' ? val(row, k) >= v : op === 'lt' ? val(row, k) < v
           : op === 'in' ? v.replace(/^\(|\)$/g, '').split(',').includes(val(row, k)) : true);
         if (req.method === 'GET') {
+          if (rest === 'leads' && db.noOwnerCol && (url.searchParams.get('select') || '').includes('assigned_to')) return send(res, 400, { code: '42703', message: 'column leads.assigned_to does not exist' });
           let rows = [...t.values()].filter(match);
           const ord = url.searchParams.get('order'); if (ord) { const [col, dir] = ord.split('.'); rows.sort((a, b) => (val(a, col) < val(b, col) ? -1 : 1) * (dir === 'desc' ? -1 : 1)); }
           return send(res, 200, rows.slice(0, Number(url.searchParams.get('limit')) || 1000).map((r) => ({ ...r })));
@@ -212,6 +213,12 @@ export async function startFakes() {
         if (req.method === 'POST') { const b = await readBody(req); const prev = t.get(b.email) || { role: 'member', disabled: false, must_change: false, created_at: new Date().toISOString() }; const row = { ...prev, ...b }; t.set(b.email, row); return send(res, 201, [row]); }
         if (req.method === 'PATCH') { const b = await readBody(req); const rows = [...t.values()].filter((r) => !key || r.email === key); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows); }
         if (req.method === 'DELETE') { const rows = [...t.values()].filter((r) => r.email === key); rows.forEach((r) => t.delete(r.email)); return send(res, 200, rows); }
+      }
+      if (rest === 'rpc/rl_hit') {
+        if (db.rlDown) return send(res, 404, { code: 'PGRST202', message: 'function not found' });
+        const b = await readBody(req); db.rl = db.rl || new Map();
+        const k = b.p_key + '|' + Math.floor(Date.now() / 1000 / b.p_window_seconds); const n = (db.rl.get(k) || 0) + 1; db.rl.set(k, n);
+        return send(res, 200, n <= b.p_max);
       }
       if (rest === 'rpc/hc_report_view') {
         const b = await readBody(req); const h = [...db.health_checks.values()].find((r) => r.report_token === b.p_token && r.status === 'done');
