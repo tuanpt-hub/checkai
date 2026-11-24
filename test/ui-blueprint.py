@@ -45,7 +45,7 @@ async def main():
         check("soạn lại riêng một trụ cột", 'Đã soạn chẩn đoán cho 1 trụ cột' in await pg.inner_text('.okbox'))
 
         print("Chỉ số kết quả sau khi hỏi AI")
-        await pg.click('nav [data-tab="probe"]'); await pg.wait_for_timeout(300); await pg.click('[data-act="run"][data-g="B"]'); await pg.wait_for_selector('.okbox', timeout=60000)
+        await pg.click('nav [data-tab="probe"]'); await pg.wait_for_timeout(300); await pg.click('[data-act="run"][data-g="B"]'); await pg.wait_for_function("!activeJob(A(),'probe') && (flash.probeOk||'').startsWith('Đã lưu')", timeout=90000); await pg.wait_for_timeout(300)
         await pg.click('nav [data-tab="fix"]'); await pg.wait_for_timeout(300)
         o16 = await pg.evaluate("bpMeasures(audits[cur]).find(o=>o.id==='1.6')")
         check("1.6 lấy từ nhóm B và có đánh giá", o16['n'] == 18 and o16['status'] in ('Đạt', 'Chưa đạt'), o16)

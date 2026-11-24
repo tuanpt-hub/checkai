@@ -13,7 +13,7 @@ Object.assign(process.env, {
 });
 // Email/Telegram giả (xem thư cuối: GET <notify>/last-email); không đặt khóa Turnstile nên trang công khai bỏ qua bước chống bot khi chạy thử.
 const port = Number(process.env.PORT) || 3100;
-Object.assign(process.env, { ...fakeNotify.env, SITE_URL: `http://localhost:${port}/site`, APP_URL: `http://localhost:${port}`, HC_DAILY_LIMIT: process.env.HC_DAILY_LIMIT || '50', ADMIN_EMAILS: process.env.ADMIN_EMAILS ?? 'staff@netspace.vn' });
+Object.assign(process.env, { ...fakeNotify.env, SITE_URL: `http://localhost:${port}/site`, APP_URL: `http://localhost:${port}`, HC_DAILY_LIMIT: process.env.HC_DAILY_LIMIT || '50', ADMIN_EMAILS: process.env.ADMIN_EMAILS ?? 'staff@netspace.vn', JOBS_SECRET: process.env.JOBS_SECRET || 'bi-mat-chay-thu-0123456789' });
 delete process.env.TURNSTILE_SECRET_KEY; process.env.FAKE_NOTIFY = fakeNotify.base;
 if (process.env.FAKE_NO_GEMINI) delete process.env.GEMINI_API_KEY;
 const s = await startServer(port);
