@@ -154,13 +154,18 @@ input[type=checkbox],input[type=radio]{accent-color:#0a5cf5}
 .login-wordmark img{width:120px;height:auto;display:block}
 .login-mobile-brand img{width:108px!important;height:auto!important;display:block}
 @media(max-width:900px){.brand.brand-v{padding:0 4px 12px!important}.brand.brand-v img{width:120px!important}}
-/* Điện thoại: bỏ logo trên thanh đầu trang cho gọn; nút menu, chọn audit, Tạo audit, ⋯ nằm cùng một hàng */
+/* Máy tính bảng và điện thoại, chỉ ở các trang thuộc Không gian audit: bỏ logo cho gọn; nút menu, chọn audit, Tạo audit, ⋯ nằm cùng một hàng.
+   Trang Khách tiềm năng, Người dùng và mọi trang trên máy tính: logo hiện bình thường. */
+@media(max-width:900px){
+  body.page-audit .appbar .app-logo{display:none!important}
+  body.page-audit .appbar{flex-wrap:nowrap!important;gap:10px!important}
+  body.page-audit .app-title{flex:0 0 auto!important}
+  body.page-audit .appbar .toolbar{flex:1 1 auto!important;min-width:0;gap:10px!important}
+  body.page-audit .appbar .audit-picker{flex:1 1 auto;min-width:0;max-width:none}
+}
 @media(max-width:600px){
-  .appbar .app-logo{display:none!important}
-  .appbar{flex-wrap:nowrap!important;gap:8px!important;padding:10px 12px!important;min-height:0!important}
-  .app-title{flex:0 0 auto!important}
-  .appbar .toolbar{flex:1 1 auto!important;min-width:0;gap:8px!important}
-  .appbar .audit-picker{flex:1 1 auto;min-width:0}
+  .appbar{padding:10px 12px!important;gap:8px!important;min-height:0!important}
+  body.page-audit .appbar .toolbar{gap:8px!important}
   .appbar .audit-picker label{display:none}
   .appbar .audit-picker select{font-size:14px;min-height:40px;padding:0 22px 0 4px;text-overflow:ellipsis}
   .appbar .toolbar .primary{min-height:40px;padding:8px 12px;font-size:13px}
