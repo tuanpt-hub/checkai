@@ -43,7 +43,7 @@ export const config = route(async (req, res) => {
 export const lead = route(async (req, res) => {
   allowMethods(req, ['POST']);
   sameOrigin(req);
-  limitIp(req, 'lead', 5, 10 * 60_000);
+  await limitIp(req, 'lead', 5, 10 * 60_000, { shared: true });
   const b = await readJson(req, 20_000);
   await verifyTurnstile(req, b.turnstile);
   const f = cleanLeadForm(b), at = attribution(b);
@@ -60,7 +60,7 @@ export const lead = route(async (req, res) => {
 export const start = route(async (req, res) => {
   allowMethods(req, ['POST']);
   sameOrigin(req);
-  limitIp(req, 'hc-start', 5, 10 * 60_000);
+  await limitIp(req, 'hc-start', 5, 10 * 60_000, { shared: true });
   const b = await readJson(req, 20_000);
   await verifyTurnstile(req, b.turnstile);
   const f = cleanHcForm(b), domain = domainOf(f.website), at = attribution(b);
@@ -87,7 +87,7 @@ export const start = route(async (req, res) => {
 export const verify = route(async (req, res) => {
   allowMethods(req, ['POST']);
   sameOrigin(req);
-  limitIp(req, 'hc-verify', 20, 10 * 60_000);
+  await limitIp(req, 'hc-verify', 20, 10 * 60_000, { shared: true });
   const b = await readJson(req, 2_000), token = String(b.token || '');
   if (!/^[A-Za-z0-9_-]{30,100}$/.test(token)) throw new HttpError(400, 'bad_link', 'Đường dẫn không hợp lệ.');
   const hc = must(await rest('GET', `health_checks?verify_hash=eq.${hashT(token)}&select=*`))[0];
@@ -124,7 +124,7 @@ export const scan = route(async (req, res) => {
 export const probe = route(async (req, res) => {
   allowMethods(req, ['POST']);
   sameOrigin(req);
-  limitIp(req, 'hc-probe', 80, 10 * 60_000);
+  await limitIp(req, 'hc-probe', 80, 10 * 60_000);
   const hc = await hcFromSession(req);
   const b = await readJson(req, 2_000), qid = String(b.qid || ''), engine = String(b.engine || '');
   if (!QIDS.includes(qid) || !(hc.engines || []).includes(engine)) throw new HttpError(400, 'bad_probe', 'Câu hỏi hoặc AI không hợp lệ.');
@@ -184,7 +184,7 @@ const device = (ua) => (/ipad|tablet/i.test(ua) ? 'máy tính bảng' : /mobi|ip
 /** GET /api/hc?op=report&t=… – dữ liệu báo cáo (không lộ email khách); ghi lượt xem, báo sales lần xem đầu. nv=1: người nội bộ xem, không tính. */
 export const report = route(async (req, res) => {
   allowMethods(req, ['GET']);
-  limitIp(req, 'hc-report', 60, 10 * 60_000);
+  await limitIp(req, 'hc-report', 60, 10 * 60_000);
   const hc = await hcByReport(String((req.query && req.query.t) || ''));
   if (!hc) throw new HttpError(404, 'not_found', 'Không tìm thấy báo cáo.');
   if (!isLive(hc)) throw new HttpError(410, 'report_expired', hc.report_revoked ? 'Báo cáo này đã được thu hồi.' : 'Đường dẫn báo cáo đã hết hạn.');
@@ -228,7 +228,7 @@ export const page = route(async (req, res) => {
 /** GET /api/hc?op=og[&t=…] – ảnh xem trước PNG 1200×630 (chỉ tên thương hiệu và tỷ lệ AI nhận ra). */
 export const og = route(async (req, res) => {
   allowMethods(req, ['GET']);
-  limitIp(req, 'hc-og', 120, 10 * 60_000);
+  await limitIp(req, 'hc-og', 120, 10 * 60_000);
   const t = String((req.query && req.query.t) || '');
   let hc = null; if (t) { try { hc = await hcByReport(t); } catch { /* ảnh chung */ } }
   const live = isLive(hc), r = live ? hc.report.recognition || {} : {};

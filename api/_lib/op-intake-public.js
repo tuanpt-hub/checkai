@@ -5,7 +5,7 @@ import { linkFromRequest, limitIp, cleanSubmission, checkSubmitter, FIELDS, AI_L
 /** Trang công khai cho thương hiệu: đọc hồ sơ hiện có và gửi thông tin vào hàng chờ duyệt. Không trả điểm hay dữ liệu audit khác. */
 export default route(async (req, res) => {
   allowMethods(req, ['GET', 'POST']);
-  limitIp(req, 'intake', 60, 10 * 60_000);
+  await limitIp(req, 'intake', 60, 10 * 60_000);
   const link = await linkFromRequest(req);
   if (req.method === 'GET') {
     const r = await rest('GET', `audits?id=eq.${encodeURIComponent(link.audit_id)}&select=data`);
@@ -17,7 +17,7 @@ export default route(async (req, res) => {
     return ok(res, { brand: fields.brand, expiresAt: link.expires_at, fields, competitors,
       aiLeft: Math.max(0, AI_LIMIT() - (link.ai_calls || 0)), submissionsLeft: Math.max(0, SUBMISSION_LIMIT() - (link.submissions || 0)) });
   }
-  limitIp(req, 'intake-post', 10, 10 * 60_000);
+  await limitIp(req, 'intake-post', 10, 10 * 60_000, { shared: true });
   if ((link.submissions || 0) >= SUBMISSION_LIMIT()) throw new HttpError(429, 'submission_limit', 'Link này đã đạt số lần gửi tối đa. Liên hệ NetSpace.');
   const sub = cleanSubmission(await readJson(req, 80_000));
   checkSubmitter(sub);

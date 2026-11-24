@@ -169,3 +169,8 @@ export const remove = route(async (req, res) => {
   console.log('[users] removed', email, 'by', me.email);
   ok(res, { deleted: true });
 });
+
+/** Nhân viên đang có quyền vào công cụ (để giao khách tiềm năng). */
+export async function activeStaff() {
+  return (await everyone()).filter((u) => u.access && !u.disabled).map((u) => ({ email: u.email, name: u.name || '' })).sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, 'vi'));
+}

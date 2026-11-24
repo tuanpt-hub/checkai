@@ -6,7 +6,7 @@ import { linkFromRequest, limitIp, cleanSubmission, AI_LIMIT, suggest } from './
 /** Gợi ý bằng AI trên form công khai. Giới hạn số lượt theo link; chi phí tính vào hạn mức của người tạo link. */
 export default route(async (req, res) => {
   allowMethods(req, ['POST']);
-  limitIp(req, 'intake-ai', 10, 10 * 60_000);
+  await limitIp(req, 'intake-ai', 10, 10 * 60_000, { shared: true });
   const link = await linkFromRequest(req);
   const b = await readJson(req, 80_000);
   const kind = String(b.kind || '');

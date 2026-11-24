@@ -2,6 +2,9 @@ import { route, ok, allowMethods, readJson, HttpError } from './util.js';
 import { requireUser } from './auth.js';
 import { rest } from './supabase.js';
 import { siteUrl } from './notify.js';
+import { activeStaff } from './op-users.js';
+
+const PAGE = 200;
 
 export const STATUSES = ['new', 'contacted', 'health_check', 'audit', 'transformation', 'intelligence', 'lost'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -10,11 +13,18 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const list = route(async (req, res) => {
   allowMethods(req, ['GET']);
   await requireUser(req, res);
-  const st = String((req.query && req.query.status) || '');
-  const filter = STATUSES.includes(st) ? `&status=eq.${st}` : '';
-  const r = await rest('GET', `leads?select=*&order=created_at.desc&limit=200${filter}`);
+  const st = String((req.query && req.query.status) || ''), before = String((req.query && req.query.before) || '');
+  const filter = (STATUSES.includes(st) ? `&status=eq.${st}` : '') + (/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:?\d{2})?$/.test(before) ? `&created_at=lt.${encodeURIComponent(before)}` : '');
+  const [r, all0] = await Promise.all([rest('GET', `leads?select=*&order=created_at.desc&limit=${PAGE + 1}${filter}`), rest('GET', 'leads?select=status,assigned_to')]);
+  // Chưa chạy SQL 006 (chưa có cột assigned_to): vẫn đếm đúng theo trạng thái
+  const all = all0.status === 200 ? all0 : await rest('GET', 'leads?select=status');
   if (r.status !== 200 || !Array.isArray(r.json)) throw new HttpError(502, 'db_error', 'Không đọc được danh sách khách tiềm năng.');
-  const leads = r.json.map(({ ip_hash, ...x }) => x);
+  const hasMore = r.json.length > PAGE;
+  const leads = r.json.slice(0, PAGE).map(({ ip_hash, ...x }) => x);
+  // Đếm trên toàn bộ khách (không phụ thuộc trang đang tải)
+  const rows = all.status === 200 && Array.isArray(all.json) ? all.json : [];
+  const counts = { total: rows.length, byStatus: {}, byOwner: {}, unassigned: 0 };
+  for (const x of rows) { counts.byStatus[x.status] = (counts.byStatus[x.status] || 0) + 1; if (x.assigned_to) counts.byOwner[x.assigned_to] = (counts.byOwner[x.assigned_to] || 0) + 1; else counts.unassigned++; }
   const ids = leads.map((l) => l.id).filter((id) => UUID.test(id));
   let hcs = [];
   if (ids.length) {
@@ -29,7 +39,7 @@ export const list = route(async (req, res) => {
       accuracy: hc.report ? hc.report.accuracy : null, actions: hc.report ? hc.report.actions : [],
       expiresAt: hc.report_expires_at, revoked: !!hc.report_revoked, views: hc.view_count || 0, firstViewedAt: hc.first_viewed_at, lastViewedAt: hc.last_viewed_at } : null;
   }
-  ok(res, { leads, statuses: STATUSES });
+  ok(res, { leads, statuses: STATUSES, hasMore, counts });
 });
 
 /** POST /api/leads?op=update – đổi trạng thái, ghi chú nội bộ, gắn audit đã tạo từ lead. */
@@ -41,8 +51,15 @@ export const update = route(async (req, res) => {
   const patch = { updated_at: new Date().toISOString(), updated_by: user.email };
   if (b.status !== undefined) { if (!STATUSES.includes(b.status)) throw new HttpError(400, 'bad_status', 'Trạng thái không hợp lệ.'); patch.status = b.status; }
   if (b.staff_note !== undefined) patch.staff_note = String(b.staff_note || '').slice(0, 4000);
+  if (b.assigned_to !== undefined) {
+    const to = String(b.assigned_to || '').toLowerCase();
+    if (to && !(await activeStaff()).some((x) => x.email === to)) throw new HttpError(400, 'bad_owner', 'Người phụ trách phải là tài khoản đang hoạt động trong công cụ.');
+    patch.assigned_to = to || null;
+  }
   if (b.audit_id !== undefined) { const a = String(b.audit_id || ''); if (a && !/^[A-Za-z0-9_-]{3,64}$/.test(a)) throw new HttpError(400, 'bad_audit', 'Mã audit không hợp lệ.'); patch.audit_id = a || null; }
   const r = await rest('PATCH', `leads?id=eq.${b.id}`, { body: patch, prefer: 'return=representation' });
+  if (r.status === 400 && patch.assigned_to !== undefined && /assigned_to/.test(String(r.text || JSON.stringify(r.json || '')))) throw new HttpError(503, 'needs_migration', 'Chưa bật được tính năng giao người phụ trách: cần chạy SQL 006 trên Supabase.');
+  if (r.status === 400 && patch.assigned_to !== undefined && /assigned_to/.test(String(r.text || JSON.stringify(r.json || '')))) throw new HttpError(503, 'needs_migration', 'Chưa bật được tính năng giao người phụ trách: cần chạy SQL 006 trên Supabase.');
   if (r.status >= 300 || !Array.isArray(r.json) || !r.json[0]) throw new HttpError(404, 'not_found', 'Không tìm thấy khách tiềm năng.');
   const { ip_hash, ...lead } = r.json[0];
   ok(res, { lead });
@@ -82,4 +99,11 @@ export const remove = route(async (req, res) => {
   if (!Array.isArray(r.json) || !r.json.length) throw new HttpError(404, 'not_found', 'Không tìm thấy khách tiềm năng.');
   console.log('[leads] removed', b.id, 'by', user.email, 'health_checks:', Array.isArray(h.json) ? h.json.length : 0);
   ok(res, { deleted: true, healthChecks: Array.isArray(h.json) ? h.json.length : 0 });
+});
+
+/** GET /api/leads?op=staff – nhân viên có thể giao khách (mọi người dùng đã đăng nhập). */
+export const staff = route(async (req, res) => {
+  allowMethods(req, ['GET']);
+  await requireUser(req, res);
+  ok(res, { staff: await activeStaff() });
 });
