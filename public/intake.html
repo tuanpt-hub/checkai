@@ -5,20 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="color-scheme" content="light">
-<title>Hồ sơ thương hiệu – NetSpace AI Brand Readiness</title>
-<link rel="icon" type="image/png" href="/assets/netspace-symbol.png">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap">
+<title>Hồ sơ thương hiệu – brand.ai.vn</title>
+<link rel="icon" type="image/png" href="/assets/brandaivn-favicon.png">
+<meta name="theme-color" content="#030B1C">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600&display=swap">
 <style>
-:root{--bg:#f7f8fb;--card:#fff;--line:#e6e9f0;--line2:#d6dbe5;--text:#18212f;--muted:#697386;--accent:#ec6a3a;--ok:#19896b;--danger:#c94343;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--bg:#f4f7fc;--card:#fff;--line:#e6ecf5;--line2:#d3dcea;--text:#0b1528;--muted:#5b6b85;--accent:#0a5cf5;--ok:#19896b;--danger:#c94343;color-scheme:light;box-sizing:border-box;padding-bottom:env(safe-area-inset-bottom,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:400 15px/1.6 "Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:860px;margin:0 auto;padding:24px 16px 80px}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;margin-bottom:22px;border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:10px;color:var(--text)}
-.brand img{width:40px;height:35px;object-fit:contain;flex:none}
-.brand strong{display:block;font-size:22px;font-weight:700;letter-spacing:-.8px;line-height:1.2}
-.brand small{display:block;font-size:11px;color:var(--muted);letter-spacing:.2px;margin-top:1px}
-.topbar .tag{font-size:12px;color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.topbar{background:radial-gradient(ellipse 60% 140% at 100% 0%,rgba(10,92,245,.35),transparent 70%),linear-gradient(100deg,#030b1c,#061433 55%,#0a1f4d);border-bottom:1px solid #16284f;padding-top:env(safe-area-inset-top,0px)}
+.tb-in{max-width:860px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand img{height:30px;width:auto;display:block;flex:none}
+.brand-tag{border-left:1px solid rgba(255,255,255,.2);padding-left:12px;font-family:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;font-size:10px;line-height:1.35;letter-spacing:.08em;color:#22d3ee;font-weight:600;white-space:nowrap}
+.topbar .tag{font-size:12px;color:#c3d2ee;border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:4px 10px;white-space:nowrap}
+@media (max-width:560px){.brand-tag{display:none}}
 .eyebrow{display:block;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--accent);margin-bottom:6px}
 h1{font-size:clamp(22px,4.5vw,28px);margin:0;line-height:1.25;letter-spacing:-.4px}
 @media (max-width:420px){.topbar .tag{display:none}}
@@ -33,11 +35,13 @@ label{display:block;font-weight:600;font-size:13px;margin:14px 0 5px}
 label span{font-weight:400;color:var(--muted)}
 input[type=text],input[type=email],input[type=tel],textarea{width:100%;font:inherit;color:inherit;background:#fbfcfe;border:1px solid var(--line2);border-radius:9px;padding:10px 12px}
 textarea{resize:vertical}
-input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #ec6a3a26}
+input:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(10,92,245,.18)}
 button{font:inherit;cursor:pointer;border:1px solid var(--line2);background:#fff;color:var(--text);border-radius:9px;padding:9px 14px;font-weight:500}
 button:hover:not(:disabled){border-color:#b9c1ce}
 button:disabled{opacity:.5;cursor:not-allowed}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.primary{background:linear-gradient(100deg,#0a5cf5,#1f6bff);border-color:#0a5cf5;color:#fff;font-weight:600;box-shadow:0 4px 14px rgba(10,92,245,.28)}
+button.primary:hover:not(:disabled){background:#0848c2;border-color:#0848c2}
+input[type=checkbox],input[type=radio]{accent-color:#0a5cf5}
 button.ghost{background:transparent;border-color:transparent;color:var(--muted)}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -45,6 +49,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:640px){.comp{grid-template-columns:minmax(0,1fr) auto}.comp input:nth-child(2){grid-column:1/2}}
 .hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
 .note{border-radius:10px;padding:11px 14px;font-size:13.5px;margin:12px 0;background:#eef4ff;color:#24406f}
+.card h2{color:var(--text)}.sugg button:hover:not(:disabled){border-color:#9cc1ff;background:#f3f8ff}
 .note.ok{background:#eaf8f0;color:#145a38}
 .note.err{background:#fdeeee;color:#8c2a2a}
 .sugg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
@@ -54,8 +59,8 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
+<header class="topbar"><div class="tb-in"><div class="brand"><img src="/assets/brandaivn-logo-white.png" width="170" height="30" alt="brand.ai.vn"><span class="brand-tag">AI BRAND READINESS<br>BY NETSPACE</span></div><span class="tag">Biểu mẫu dành cho thương hiệu</span></div></header>
 <div class="wrap">
-  <header class="topbar"><div class="brand"><img src="/assets/netspace-symbol.png" width="40" height="35" alt="Biểu tượng NetSpace"><div><strong>NetSpace</strong><small>AI Brand Readiness</small></div></div><span class="tag">Biểu mẫu dành cho thương hiệu</span></header>
   <div class="page-head"><span class="eyebrow">HỒ SƠ THƯƠNG HIỆU</span><h1 id="title">Hồ sơ thương hiệu</h1><p class="sub">Thông tin bạn gửi sẽ được NetSpace xem lại trước khi dùng cho audit AI Brand Readiness.</p></div>
   <div id="state" class="note">Đang tải…</div>
   <form id="form" hidden novalidate>
@@ -93,7 +98,7 @@ async function init(){
   let d;try{d=await call("/api/intake")}catch(e){$("#state").className="note err";$("#state").textContent=e.message||"Không mở được hồ sơ.";return}
   F.forEach(field);for(const f of F)$("#f_"+f[1]).value=d.fields[f[1]]||"";
   (d.competitors.length?d.competitors:[{}]).forEach(compRow);
-  if(d.brand){$("#title").textContent=d.brand;document.title="Hồ sơ "+d.brand+" – NetSpace AI Brand Readiness"}
+  if(d.brand){$("#title").textContent=d.brand;document.title="Hồ sơ "+d.brand+" – brand.ai.vn"}
   $("#exp").textContent="Link có hiệu lực đến "+new Date(d.expiresAt).toLocaleDateString("vi-VN")+". Bạn có thể gửi nhiều lần; NetSpace dùng bản mới nhất sau khi xem lại.";
   setAiLeft(d.aiLeft);$("#state").hidden=true;$("#form").hidden=false}
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-ai]");if(!b||aiLeft<=0)return;const kind=b.dataset.ai;
