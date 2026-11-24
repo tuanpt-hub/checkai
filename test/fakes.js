@@ -86,7 +86,7 @@ export function startFakeWiki() {
 }
 
 export async function startFakes() {
-  const db = { audits: new Map(), usage: new Map(), sessions: new Map(), intake_links: new Map(), intake_submissions: new Map(), leads: new Map(), health_checks: new Map(), health_check_answers: new Map(), staff: new Map(),
+  const db = { audits: new Map(), usage: new Map(), sessions: new Map(), intake_links: new Map(), intake_submissions: new Map(), leads: new Map(), health_checks: new Map(), health_check_answers: new Map(), staff: new Map(), ai_jobs: new Map(), ai_job_items: new Map(),
     authUsers: new Map(Object.entries(USERS).map(([email, password]) => [email, { id: 'u_' + email, email, password, created_at: '2026-11-01T00:00:00Z', last_sign_in_at: null, banned: false, user_metadata: {} }])) };
 
   const supabase = http.createServer(async (req, res) => {
@@ -173,6 +173,38 @@ export async function startFakes() {
         if (req.method === 'PATCH') {
           const b = await readBody(req); const rows = [...t.values()].filter(match); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows);
         }
+      }
+      if (rest === 'ai_jobs' || rest === 'ai_job_items' || rest === 'rpc/job_claim') {
+        // Hàng đợi việc AI: lọc eq/gte/lt/in/is, sắp xếp, limit/offset, chèn nhiều dòng, ràng buộc duy nhất, xóa kèm lượt.
+        if (rest === 'rpc/job_claim') {
+          const b = await readBody(req); const now = Date.now();
+          const j = [...db.ai_jobs.values()].filter((x) => ['queued', 'running'].includes(x.status) && (!x.lock_until || Date.parse(x.lock_until) < now)).sort((a, c) => (a.created_at < c.created_at ? -1 : 1))[0];
+          if (!j) return send(res, 200, []);
+          Object.assign(j, { status: 'running', lock_until: new Date(now + b.p_lock_seconds * 1000).toISOString(), started_at: j.started_at || new Date().toISOString(), heartbeat_at: new Date().toISOString() });
+          db.claims = (db.claims || 0) + 1; return send(res, 200, [{ ...j }]);
+        }
+        const t = db[rest], skip = ['select', 'order', 'limit', 'offset', 'on_conflict'];
+        const filters = [...url.searchParams].filter(([k]) => !skip.includes(k)).map(([k, v]) => [k, v.slice(0, v.indexOf('.')), v.slice(v.indexOf('.') + 1)]);
+        const val = (row, k) => (row[k] === null || row[k] === undefined ? '' : String(row[k]));
+        const match = (row) => filters.every(([k, op, v]) => op === 'eq' ? val(row, k) === v : op === 'gte' ? val(row, k) >= v : op === 'lt' ? val(row, k) < v
+          : op === 'in' ? v.replace(/^\(|\)$/g, '').split(',').includes(val(row, k)) : op === 'is' ? (v === 'null' ? row[k] == null : true) : true);
+        if (req.method === 'GET') {
+          let rows = [...t.values()].filter(match);
+          const ord = url.searchParams.get('order'); if (ord) { const [col, dir] = ord.split('.'); rows.sort((a, b) => (val(a, col) < val(b, col) ? -1 : val(a, col) > val(b, col) ? 1 : 0) * (dir === 'desc' ? -1 : 1)); }
+          const off = Number(url.searchParams.get('offset')) || 0; return send(res, 200, rows.slice(off, off + (Number(url.searchParams.get('limit')) || 1000)).map((r) => ({ ...r })));
+        }
+        if (req.method === 'POST') {
+          const body = await readBody(req), list = Array.isArray(body) ? body : [body], out = [], now = new Date().toISOString();
+          for (const b of list) {
+            if (rest === 'ai_jobs' && [...t.values()].some((x) => x.audit_id === b.audit_id && x.kind === b.kind && ['queued', 'running'].includes(x.status))) return send(res, 409, { code: '23505', message: 'duplicate key value violates unique constraint "ai_jobs_one_active"' });
+            if (rest === 'ai_job_items' && [...t.values()].some((x) => x.job_id === b.job_id && x.stage === b.stage && x.key === b.key)) { if ((req.headers.prefer || '').includes('ignore-duplicates')) continue; return send(res, 409, { code: '23505' }); }
+            const row = { id: crypto.randomUUID(), ...(rest === 'ai_jobs' ? { status: 'queued', created_at: now, done: 0, total: 0, summary: {}, params: {}, applied_at: null, lock_until: null } : { status: 'queued', attempts: 0, updated_at: now, result: null, error: null }), ...b };
+            t.set(row.id, row); out.push(row);
+          }
+          return send(res, 201, out.map((r) => ({ ...r })));
+        }
+        if (req.method === 'PATCH') { const b = await readBody(req); const rows = [...t.values()].filter(match); rows.forEach((r) => Object.assign(r, b)); return send(res, 200, rows.map((r) => ({ ...r }))); }
+        if (req.method === 'DELETE') { const rows = [...t.values()].filter(match); rows.forEach((r) => { t.delete(r.id); if (rest === 'ai_jobs') for (const [k, it] of db.ai_job_items) if (it.job_id === r.id) db.ai_job_items.delete(k); }); return send(res, 200, rows); }
       }
       if (['leads', 'health_checks', 'health_check_answers'].includes(rest)) {
         // Bảng kiểu PostgREST cho đợt A: lọc eq/gte/lt/in, sắp xếp, giới hạn, chèn (bỏ qua trùng), sửa trả bản ghi.
@@ -269,6 +301,11 @@ export async function startFakes() {
     anthropic.calls = (anthropic.calls || 0) + 1; calls.anthropic++;
     if (req.headers['x-api-key'] !== 'test-anthropic') return send(res, 401, { error: { message: 'invalid x-api-key' } });
     const b = await readBody(req); const prompt = String(b.messages[0].content);
+    // Kích hoạt lỗi/độ trễ cho kiểm thử hàng đợi: #AUTHFAIL → 401 (lỗi nghiêm trọng), #CHAM → chậm 700ms
+    if (prompt.includes('#AUTHFAIL')) return send(res, 401, { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } });
+    if (prompt.includes('#CHAM')) await new Promise((r) => setTimeout(r, 700));
+    // #TAMTHOI: lần gọi đầu của mỗi câu báo quá tải (429), lần sau thành công – kiểm tra thử lại một lần
+    if (prompt.includes('#TAMTHOI')) { const seen = (anthropic.tam = anthropic.tam || new Set()); if (!seen.has(prompt)) { seen.add(prompt); return send(res, 429, { type: 'error', error: { type: 'rate_limit_error', message: 'rate limited' } }); } }
     if (b.tools && prompt.includes('kiểm chứng viên')) {
       return send(res, 200, { stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20, server_tool_use: { web_search_requests: 1 } }, content: [
         { type: 'server_tool_use', id: 's1', name: 'web_search', input: { query: 'kiểm chứng' } },

@@ -7,7 +7,7 @@
   "cleanUrls": true,
   "functions": {
     "api/probe.js": {
-      "maxDuration": 120
+      "maxDuration": 300
     },
     "api/claude.js": {
       "maxDuration": 120
@@ -283,7 +283,7 @@
       ]
     },
     {
-      "source": "/(dashboard\\.css|sov\\.js|evidence\\.js|pillars\\.js|cost\\.js|api-response\\.js)",
+      "source": "/(dashboard\\.css|sov\\.js|evidence\\.js|pillars\\.js|probe-core\\.js|cost\\.js|api-response\\.js)",
       "headers": [
         {
           "key": "Cache-Control",

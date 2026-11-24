@@ -1,16 +1,13 @@
 import { selectedModel } from './_lib/model-options.js';
 import { route, ok, allowMethods, readJson, HttpError, envInt } from './_lib/util.js';
 import { requireUser } from './_lib/auth.js';
-import { ask, configured, PROBE_SYSTEM, MODELS } from './_lib/providers.js';
+import { ask as askAI, configured, PROBE_SYSTEM, MODELS } from './_lib/providers.js';
 import { bump } from './_lib/usage.js';
+import { dispatch } from './_lib/dispatch.js';
+import { ENGINES, PROBE_MAX_TOKENS, create, get, list, cancel, results, unapply, tick } from './_lib/jobs.js';
 
-const ENGINES = ['claude', 'openai', 'gemini', 'grok', 'deepseek'];
-// Trần token đầu ra mỗi lượt hỏi. OpenAI và Gemini tính cả token suy luận vào mức này,
-// nên cần rộng hơn Claude (Claude giữ 1500 để không tăng chi phí). Đổi bằng PROBE_MAX_TOKENS_<ENGINE>.
-const PROBE_MAX_TOKENS = { claude: 1500, openai: 4000, gemini: 4096, grok: 3000, deepseek: 4000 };
-
-/** Hỏi MỘT câu hỏi tới MỘT AI (cuộc trò chuyện mới, không lịch sử). */
-export default route(async (req, res) => {
+/** Hỏi MỘT câu hỏi tới MỘT AI ngay (cuộc trò chuyện mới, không lịch sử) – dùng cho kiểm tra nhanh. */
+const ask = route(async (req, res) => {
   allowMethods(req, ['POST']);
   const user = await requireUser(req, res);
   const b = await readJson(req, 20_000);
@@ -20,11 +17,13 @@ export default route(async (req, res) => {
   if (!ENGINES.includes(engine)) throw new HttpError(400, 'bad_engine', 'AI không được hỗ trợ.');
   if (prompt.length < 3 || prompt.length > 2000) throw new HttpError(400, 'bad_prompt', 'Câu hỏi phải dài 3–2000 ký tự.');
   if (!configured()[engine]) throw new HttpError(503, 'not_configured', 'AI này chưa được cấu hình khóa API.');
-
   const model = selectedModel(engine, b.model, MODELS());
   const { used, limit } = await bump(user.email, 1);
   const deadline = Date.now() + 100_000;
   const maxTokens = envInt(`PROBE_MAX_TOKENS_${engine.toUpperCase()}`, PROBE_MAX_TOKENS[engine]);
-  const r = await ask(engine, { prompt, system: PROBE_SYSTEM, web, maxTokens, model, deadline });
+  const r = await askAI(engine, { prompt, system: PROBE_SYSTEM, web, maxTokens, model, deadline });
   ok(res, { ...r, text: r.text.slice(0, 8000), sources: r.sources.slice(0, 20), queries: r.queries.slice(0, 10), used, limit });
 });
+
+// Hàng đợi việc AI chạy nền: ?op=create|get|list|cancel|results|unapply|tick
+export default dispatch({ ask, create, get, list, cancel, results, unapply, tick }, 'ask');

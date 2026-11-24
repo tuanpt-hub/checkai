@@ -24,7 +24,7 @@ async def main():
         n = await pg.evaluate("[...document.querySelectorAll('[data-svar]')].filter(i=>i.value).length")
         check("AI soạn 40 cách hỏi khác cho 20 tình huống", n == 40, n)
         check("nhóm S thành 60 câu", '60 câu' in await pg.inner_text('[data-act=run][data-g=S]'))
-        await pg.click('[data-act="run"][data-g="C"]'); await pg.wait_for_selector('.okbox', timeout=60000); await pg.wait_for_timeout(400)
+        await pg.click('[data-act="run"][data-g="C"]'); await pg.wait_for_function("!activeJob(A(),'probe') && (flash.probeOk||'').startsWith('Đã lưu')", timeout=90000); await pg.wait_for_timeout(300)
         check("lưu đủ 45 kết quả nhóm C", '45 kết quả' in await pg.inner_text('.okbox'), await pg.inner_text('.okbox'))
         judges = await pg.evaluate("Object.values(audits[cur].probe).flatMap(r=>Object.entries(r)).filter(([e])=>e==='Claude').map(([,x])=>x.judgeModel)")
         check("câu trả lời của Claude được chấm bởi model khác hãng", judges and all(j and 'claude' not in j for j in judges), judges[:3])
