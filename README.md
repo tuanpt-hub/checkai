@@ -147,6 +147,18 @@ Biến môi trường mới:
 
 SQL: chạy `supabase/migrations/003_leads_health_checks.sql` một lần. Kiểm thử: `node test/hc.mjs` (trong `npm test`) và `python3 test/ui-site.py` (cần `npm run dev:fake`; landing chạy thử ở `/site/home.html`).
 
+## Việc AI chạy nền (đóng tab vẫn chạy)
+
+**Giai đoạn 1: Hỏi AI.** Bấm chạy là giao việc cho máy chủ (`/api/probe?op=create`), có thể đóng tab ngay. Kết quả nằm ở bảng `ai_job_items`; khi có người mở audit, công cụ tự gộp vào audit (`op=results`, chỉ một người nhận được) – không ghi thẳng vào audit nên không xung đột với người đang sửa.
+
+- **Bộ chạy** (`api/_lib/jobs.js`): nhận việc bằng khóa (`job_claim`, `for update skip locked`), chạy song song `JOB_CONCURRENCY` (4), mỗi đợt `JOB_BUDGET_MS` (240 giây, hàm `probe.js` tối đa 300 giây), hết đợt thì nhả khóa và tự gọi đợt sau (`op=tick` với khóa `JOBS_SECRET`). Hỏi xong tự tạo các lô chấm (8 câu/lô, mẫu chấm dùng chung `public/probe-core.js`).
+- **Lỗi:** lỗi tạm thời được thử lại; lỗi nghiêm trọng (sai khóa, hết tiền, sai model) hoặc 3 lỗi liên tiếp thì dừng gửi tới AI đó, bỏ qua các câu còn lại của nó; vượt hạn mức hôm nay thì dừng việc. Bấm **Dừng** là không gửi thêm câu nào (kiểm tra trước từng lượt). Lượt kẹt do máy chủ tắt giữa chừng (quá 150 giây) được xếp lại.
+- **Đánh thức:** Supabase `pg_cron` mỗi phút gọi `op=tick` (SQL 008, khóa đọc từ Vault `jobs_secret`) – chỉ gọi khi có việc chờ. Người đang mở app cũng đánh thức được (nhịp tim quá 90 giây).
+- **Giao diện:** ô tiến độ (đã hỏi / đang chấm), nút Dừng, dấu ⟳ trên mục Hỏi AI; theo dõi việc của mọi audit đã mở, xong việc nào thì gộp vào đúng audit đó. Mỗi audit chỉ một việc Hỏi AI chạy cùng lúc.
+- **Biến môi trường:** `JOBS_SECRET` (bắt buộc, ≥16 ký tự, giống khóa trong Vault); tùy chọn `JOB_BUDGET_MS`, `JOB_CONCURRENCY`.
+- **SQL:** `007_ai_jobs.sql` (bảng, `job_claim`), `008_ai_jobs_cron.sql` (pg_net + pg_cron). Phải chạy 007 TRƯỚC khi deploy code này.
+- **Kiểm thử:** `node test/jobs.mjs` (trong `npm test`), `python3 test/ui-jobs.py` (đóng tab giữa chừng, mở lại thấy kết quả).
+
 ## Hiệu năng, giới hạn tần suất, khách tiềm năng nâng cao
 
 - **Vùng chạy hàm:** `vercel.json` đặt `"regions": ["bom1"]` (Mumbai), cạnh Supabase `ap-south-1`, để mỗi truy vấn cơ sở dữ liệu không phải đi về Hồng Kông. Nếu sau này chuyển Supabase sang Singapore, đổi thành `sin1`.
