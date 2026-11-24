@@ -243,3 +243,7 @@ pre.code{font-size:11.5px!important}
 .app-tag{font-size:10px!important}
 .scaleLab span{font-size:11px!important;line-height:1.25}
 @media(max-width:600px){.page-meta button{font-size:0!important;min-width:40px}.page-meta button .small-arrow{width:16px;height:16px}}
+/* Việc AI chạy nền */
+.job-box{border:1px solid #c9dcff;background:#f3f8ff}.job-box .bmsg b{color:#0848c2}
+nav.steps button small.job-run{color:#0a5cf5!important;font-weight:700;animation:jobspin 1.2s linear infinite;display:inline-block}
+@keyframes jobspin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){nav.steps button small.job-run{animation:none}}
