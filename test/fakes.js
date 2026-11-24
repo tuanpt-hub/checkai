@@ -34,6 +34,7 @@ function blueprintJSON(prompt) {
     { tang: 'con_nguoi', tu: 'x', sang: 'y', criteria: [ids[0]], can_cu: '' }] });
 }
 function itemsJSON(prompt) {
+  if (prompt.includes('"topics"') && prompt.includes('"scenarios"')) return JSON.stringify({ topics: ['Truyền thông thương hiệu số', 'Quản lý KOL/KOC', 'Mạng lưới kênh MCN'], scenarios: ['Công ty F&B cần đơn vị làm chiến dịch KOL ngân sách 500 triệu tại Hà Nội trong 2 tháng, nên chọn ai?', 'Thương hiệu mỹ phẩm muốn livestream bán hàng quy mô vừa, ưu tiên đối tác có số liệu đo lường, gợi ý đơn vị nào?'] });
   if (prompt.includes('"ly_do"')) return JSON.stringify({ items: [{ name: 'Dinos', ly_do: 'MCN lớn tại Việt Nam' }, { name: 'Yeah1', ly_do: 'Mạng lưới nội dung số' }, { name: 'METUB', ly_do: 'MCN đa nền tảng' }] });
   const n = prompt.includes('20 tình huống') ? 20 : 10;
   return JSON.stringify({ items: Array.from({ length: n }, (_, i) => (n === 20 ? 'Tình huống mua hàng gợi ý ' : 'Chủ đề gợi ý ') + (i + 1)) });
@@ -319,7 +320,7 @@ export async function startFakes() {
         { type: 'web_search_tool_result', tool_use_id: 's1', content: [{ type: 'web_search_result', url: 'https://vtv.vn/a', title: 'VTV' }, { type: 'web_search_result', url: 'https://znews.vn/b', title: 'Znews' }] },
         { type: 'text', text: answerFor(prompt), citations: [{ type: 'web_search_result_location', url: 'https://vtv.vn/a', title: 'VTV' }] }] });
     }
-    const text = prompt.includes('"tang"') ? blueprintJSON(prompt) : prompt.includes('Viết lại mỗi tình huống') ? variantsJSON(prompt) : prompt.includes('"timeframe"') ? planJSON(prompt) : prompt.includes('"confidence"') ? scoreJSON(prompt) : prompt.includes('{"items"') ? itemsJSON(prompt) : prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
+    const text = prompt.includes('"tang"') ? blueprintJSON(prompt) : prompt.includes('Viết lại mỗi tình huống') ? variantsJSON(prompt) : prompt.includes('"timeframe"') ? planJSON(prompt) : prompt.includes('"confidence"') ? scoreJSON(prompt) : (prompt.includes('{"items"') || prompt.includes('"topics":')) ? itemsJSON(prompt) : prompt.includes('JSON') ? judgeJSON(prompt) : 'Văn bản do Claude viết (giả lập).';
     send(res, 200, { stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 20 }, content: [{ type: 'text', text: prompt.includes('JSON') ? '```json\n' + text + '\n```' : text }] });
   });
 
