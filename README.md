@@ -157,7 +157,9 @@ SQL: chạy `supabase/migrations/003_leads_health_checks.sql` một lần. Kiể
 - **Giao diện:** ô tiến độ (đã hỏi / đang chấm), nút Dừng, dấu ⟳ trên mục Hỏi AI; theo dõi việc của mọi audit đã mở, xong việc nào thì gộp vào đúng audit đó. Mỗi audit chỉ một việc Hỏi AI chạy cùng lúc.
 - **Biến môi trường:** `JOBS_SECRET` (bắt buộc, ≥16 ký tự, giống khóa trong Vault); tùy chọn `JOB_BUDGET_MS`, `JOB_CONCURRENCY`.
 - **SQL:** `007_ai_jobs.sql` (bảng, `job_claim`), `008_ai_jobs_cron.sql` (pg_net + pg_cron). Phải chạy 007 TRƯỚC khi deploy code này.
-- **Kiểm thử:** `node test/jobs.mjs` (trong `npm test`), `python3 test/ui-jobs.py` (đóng tab giữa chừng, mở lại thấy kết quả).
+**Giai đoạn 2: tác vụ soạn/chấm.** Chấm tự động 6 lớp (`gen:score`), AI Trust Blueprint (`gen:bp`), Kế hoạch cải thiện (`gen:plan`), Phân tích nội dung (`gen:content`), Phân tích nguồn (`gen:sources`) chạy nền cùng hàng đợi: trình duyệt dựng câu lệnh và giao việc (`runGen`), máy chủ gọi AI (`judgeOrWrite`, có model dự phòng), trình duyệt nhận kết quả và xử lý bằng đúng logic cũ (`GEN_APPLY`). Mỗi tính năng một loại việc nên chạy song song được; mỗi audit chỉ một việc cùng tính năng. Phần chấm theo quy tắc dữ liệu của Chấm 6 lớp vẫn chạy ngay trên trình duyệt. Khi trạng thái việc đổi, trang đang mở tự vẽ lại; đang gõ dở trong ô nhập thì hoãn tới khi rời ô.
+
+- **Kiểm thử:** `node test/jobs.mjs` (trong `npm test`), `python3 test/ui-jobs.py` (đóng tab giữa chừng với Hỏi AI và Blueprint, mở lại thấy kết quả; đang gõ khi việc xong không mất chữ).
 
 ## Hiệu năng, giới hạn tần suất, khách tiềm năng nâng cao
 

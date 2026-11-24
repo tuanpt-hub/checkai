@@ -15,7 +15,8 @@ import '../../public/probe-core.js';
    Supabase pg_cron đánh thức mỗi phút phòng khi chuỗi tự gọi bị đứt. Kết quả nằm ở ai_job_items, trình duyệt gộp vào audit. */
 export const ENGINES = ['claude', 'openai', 'gemini', 'grok', 'deepseek'];
 export const PROBE_MAX_TOKENS = { claude: 1500, openai: 4000, gemini: 4096, grok: 3000, deepseek: 4000 };
-const KINDS = ['probe', 'gen'];
+// Loại việc: 'probe' (Hỏi AI: hỏi rồi chấm) hoặc 'gen:<tính năng>' (soạn/chấm độc lập: score, bp, plan, content, sources…)
+const isKind = (k) => k === 'probe' || /^gen:[a-z0-9-]{2,30}$/.test(k);
 const FATAL = ['auth_failed', 'insufficient_credit', 'model_not_found', 'bad_request', 'bad_model', 'not_configured', 'provider_unavailable', 'invalid_api_response'];
 const RETRY = ['rate_limited', 'timeout', 'provider_error', 'empty_response', 'network'];
 const budgetMs = () => envInt('JOB_BUDGET_MS', 240_000);
@@ -50,7 +51,7 @@ export const create = route(async (req, res) => {
   const b = await readJson(req, 2_000_000);
   const auditId = s(b.auditId, 64), kind = String(b.kind || '');
   if (!/^[A-Za-z0-9_-]{3,64}$/.test(auditId)) throw new HttpError(400, 'bad_audit', 'Mã audit không hợp lệ.');
-  if (!KINDS.includes(kind)) throw new HttpError(400, 'bad_kind', 'Loại việc không hợp lệ.');
+  if (!isKind(kind)) throw new HttpError(400, 'bad_kind', 'Loại việc không hợp lệ.');
   const items = Array.isArray(b.items) ? b.items : [];
   if (!items.length || items.length > MAX_ITEMS) throw new HttpError(400, 'bad_items', `Cần 1–${MAX_ITEMS} lượt gọi.`);
   const clean = items.map(kind === 'probe' ? cleanProbeItem : cleanGenItem);
@@ -70,7 +71,7 @@ export const create = route(async (req, res) => {
   const ins = await rest('POST', 'ai_jobs', { body: { audit_id: auditId, kind, created_by: user.email, params, total: clean.length, stage: kind === 'probe' ? 'ask' : 'gen', summary: {} }, prefer: 'return=representation' });
   if (ins.status === 409 || (ins.json && ins.json.code === '23505')) {
     const cur = rows(await rest('GET', `ai_jobs?audit_id=eq.${encodeURIComponent(auditId)}&kind=eq.${kind}&status=in.(queued,running)&select=id,created_by`))[0];
-    throw new HttpError(409, 'job_running', `Audit này đang có việc ${kind === 'probe' ? 'Hỏi AI' : 'AI'} chạy nền${cur ? ' (' + cur.created_by + ')' : ''}. Đợi xong hoặc dừng việc đó trước.`, { jobId: cur && cur.id });
+    throw new HttpError(409, 'job_running', `Audit này đang có việc ${kind === 'probe' ? 'Hỏi AI' : (params.label || 'AI')} chạy nền${cur ? ' (' + cur.created_by + ')' : ''}. Đợi xong hoặc dừng việc đó trước.`, { jobId: cur && cur.id });
   }
   const job = rows(ins)[0];
   const stage = kind === 'probe' ? 'ask' : 'gen';
@@ -83,7 +84,7 @@ export const create = route(async (req, res) => {
 });
 
 const publicJob = (j) => ({ id: j.id, auditId: j.audit_id, kind: j.kind, status: j.status, stage: j.stage, createdBy: j.created_by, createdAt: j.created_at, startedAt: j.started_at, finishedAt: j.finished_at,
-  heartbeatAt: j.heartbeat_at, total: j.total, done: j.done, summary: j.summary || {}, error: j.error, appliedAt: j.applied_at, label: j.params && j.params.label || '', feature: j.params && j.params.feature || '' });
+  heartbeatAt: j.heartbeat_at, total: j.total, done: j.done, summary: j.summary || {}, error: j.error, appliedAt: j.applied_at, label: j.params && j.params.label || '', feature: j.params && j.params.feature || '', meta: j.params && j.params.meta || null });
 
 /* ---------- xem, dừng, nhận kết quả ---------- */
 export const get = route(async (req, res) => {

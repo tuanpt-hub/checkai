@@ -10,6 +10,12 @@ def check(name, cond, extra=""):
     global ok
     print(("  ✓ " if cond else "  ✗ ") + name + ((" – " + str(extra)[:200]) if extra and not cond else "")); ok = ok and bool(cond)
 async def saved(pg): await pg.wait_for_function("document.querySelector('#saveState').textContent==='Đã lưu'", timeout=15000)
+async def run_gen(pg, sel, kind, timeout=90000):
+    """Bấm một tác vụ AI chạy nền và chờ ĐÚNG việc mới cùng loại được gộp xong vào audit."""
+    n = await pg.evaluate(f"(jobsByAudit[cur]||[]).filter(j=>j.kind==='{kind}'&&j.appliedAt).length")
+    await pg.click(sel)
+    await pg.wait_for_function(f"(jobsByAudit[cur]||[]).filter(j=>j.kind==='{kind}'&&j.appliedAt).length>{n} && !applying.size", timeout=timeout)
+    await pg.wait_for_timeout(250)
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(); ctx = await b.new_context(viewport={"width": 1300, "height": 900}); pg = await ctx.new_page(); errs = []
@@ -70,7 +76,7 @@ async def main():
         print("Bước 4 – Chấm 6 lớp")
         await pg.click('nav [data-tab="score"]'); await pg.wait_for_timeout(300)
         manual_before = await pg.evaluate("Object.entries(audits[cur].scores).filter(([k,v])=>v&&v.s!=null&&(!v.src||v.src==='manual')).map(([k,v])=>k+':'+v.s).sort().join(',')")
-        await pg.click('[data-act="autoAll"]'); await pg.wait_for_function("!busy", timeout=60000); await pg.wait_for_timeout(300)
+        await run_gen(pg, '[data-act="autoAll"]', 'gen:score'); await pg.wait_for_timeout(300)
         k = await pg.evaluate("scoreCounts(audits[cur])")
         check("có điểm tự động theo quy tắc và điểm AI cần duyệt", k['auto'] > 0 and k['aiPending'] > 0, k)
         check("điểm chuyên viên chấm tay không bị ghi đè", manual_before == await pg.evaluate("Object.entries(audits[cur].scores).filter(([k,v])=>v&&v.s!=null&&(!v.src||v.src==='manual')).map(([k,v])=>k+':'+v.s).sort().join(',')"))
@@ -81,7 +87,7 @@ async def main():
         before = await pg.evaluate("scoreCounts(audits[cur]).aiPending")
         await pg.click('details[data-layer="5"] [data-act="approve"]'); await pg.wait_for_timeout(200)
         check("duyệt một điểm AI", await pg.evaluate("scoreCounts(audits[cur]).aiPending") == before - 1)
-        await pg.click('details[data-layer="5"] [data-act="rescore"]'); await pg.wait_for_function("!busy", timeout=30000); await pg.wait_for_timeout(300)
+        await run_gen(pg, 'details[data-layer="5"] [data-act="rescore"]', 'gen:score'); await pg.wait_for_timeout(300)
         check("chấm lại riêng lớp 5", 'AI chấm' in await pg.inner_text('.okbox'))
         await pg.click('nav [data-tab="result"]'); await pg.wait_for_timeout(300)
         check("Kết quả nhắc điểm AI đang chờ duyệt", 'chờ chuyên viên duyệt' in await pg.inner_text('#view'))
@@ -90,7 +96,7 @@ async def main():
 
         print("Bước 6 – Công cụ cải thiện")
         await pg.click('nav [data-tab="fix"]'); await pg.wait_for_timeout(300)
-        await pg.click('[data-act="plan"]'); await pg.wait_for_function("!busy", timeout=30000); await pg.wait_for_timeout(300)
+        await run_gen(pg, '[data-act="plan"]', 'gen:plan'); await pg.wait_for_timeout(300)
         check("AI soạn kế hoạch hành động theo khung thời gian", await pg.evaluate("document.querySelectorAll('.plan-card').length") >= 2 and '0–30 ngày' in await pg.inner_text('#view'))
         await pg.click('nav [data-tab="result"]'); await pg.wait_for_timeout(300); await pg.click('[data-act="showmd"]')
         check("báo cáo có kế hoạch hành động", 'Kế hoạch hành động' in await pg.inner_text('#mdBox'))
