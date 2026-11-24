@@ -5,6 +5,10 @@ import { dailyLimit, getUsage } from './usage.js';
 import { envInt } from './util.js';
 import { modelOptions, PRICING_DATE } from './model-options.js';
 import { gatewayEnabled } from './gateway.js';
+import { siteUrl } from './notify.js';
+
+/** Link hồ sơ gửi khách luôn dùng tên miền công khai (mặc định https://brand.ai.vn/ho-so), không phụ thuộc nơi nhân viên mở công cụ. */
+export const intakeBase = () => (process.env.INTAKE_URL || `${new URL(siteUrl()).origin}/ho-so`).replace(/\/$/, '');
 
 export default route(async (req, res) => {
   allowMethods(req, ['GET']);
@@ -25,5 +29,6 @@ export default route(async (req, res) => {
     gateway: gatewayEnabled(),
     pricingDate: PRICING_DATE,
     searchMaxUses: envInt('WEB_SEARCH_MAX_USES', 3),
+    intakeBase: intakeBase(),
   });
 });
