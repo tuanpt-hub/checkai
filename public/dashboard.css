@@ -205,3 +205,41 @@ input[type=checkbox],input[type=radio]{accent-color:#0a5cf5}
 @media(max-width:760px){.lead-sum{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-tools{grid-template-columns:minmax(0,1fr) auto}.lead-tools input{grid-column:1/-1}
   .lead-main{grid-template-columns:30px minmax(0,1fr);gap:8px 12px;padding:14px}.lead-when{grid-column:2;text-align:left;flex-direction:row;gap:6px;flex-wrap:wrap}.lead-act{grid-column:2;justify-content:flex-start}
   .lead-detail{padding:0 14px 14px}}
+.lead-tools{grid-template-columns:minmax(0,1fr) auto auto auto auto}
+.lead-sum{grid-template-columns:repeat(5,minmax(0,1fr))}
+.lead-own{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;background:#eaf2ff;color:#0848c2;white-space:nowrap}.lead-own.none{background:#fff4e0;color:#8a5a00}
+.lead-more{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:center}
+@media(max-width:900px){.lead-tools{grid-template-columns:1fr 1fr}.lead-tools input{grid-column:1/-1}.lead-sum{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.lead-sum{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-sum>div:last-child{grid-column:1/-1}}
+/* ---------- Cỡ chữ tối thiểu dễ đọc (đo trên mọi trang: trước đây 1.179 đoạn chữ < 11px, nhỏ nhất 8px) ----------
+   12px: nội dung chính (bảng, nút, tiêu đề thẻ, mô tả). 11–11,5px: chú thích, nhãn trạng thái, mã tiêu chí.
+   Chỉ giữ 10px cho nhãn trang trí viết hoa: dòng tagline cạnh logo, "AUDIT ĐANG MỞ". */
+.chip,.chip b,.chip span{font-size:11.5px!important}
+td.id,.cid,.ico,.lnum,.section-index{font-size:11px!important}
+nav.steps button{font-size:13px!important}nav.steps button small{font-size:11px!important}
+.nav-label{font-size:11px!important}
+.khead,.khead span{font-size:12px!important}.kcard small,.kpi span{font-size:11.5px!important}
+.bar>button,.bar>span.small,button.ghost,button.primary,.page-meta #saveState{font-size:12px!important}
+.page-meta button:not(:empty){font-size:12px}
+.rside,.rside small,.rmain small{font-size:11.5px!important}.rmain b{font-size:13px!important}
+.breadcrumb,.breadcrumb span,#pageCrumb{font-size:11.5px!important}
+.workspace-footer,.workspace-footer span{font-size:11px!important}
+.sidebar-guide p,.sidebar-guide button,.sidebar-guide strong{font-size:11.5px!important}
+.sidebar-account b,.sidebar-account #userChip,.sidebar-account span{font-size:11px!important}
+.panel table td,.tblwrap td,.tblwrap b,.panel table th,.tblwrap th,th.c{font-size:12px!important}
+.lv1,.lv2,.lv3,.lv4,.lv5,[class^="lv"]{font-size:11px!important}
+.col b{font-size:11.5px!important}.col small{font-size:11px!important}
+.section-heading p,.page-heading p,.panel>h2:first-child+p.muted,.note,.field-hint,label>span{font-size:12px!important}
+.ringbox b{font-size:12px!important}.ringbox small{font-size:11px!important}
+span.small,p.small,div.small,.small{font-size:12px}
+.login-layers span,.login-privacy,.eyebrow{font-size:11px!important}
+.audit-picker label{font-size:10px!important}
+.engchip small,.ptable td.eng,.ptable td.id,.ptable details summary{font-size:11.5px!important}
+.crit,.crit textarea{font-size:13px!important}.crit h4{font-size:14px!important}
+.lmeta span{font-size:11px!important}
+@media(max-width:600px){body{font-size:13px}label{font-size:12px!important}.heroGrid .small{font-size:12px!important}.big{font-size:48px}}
+details.fold>summary span,.assist-strip p,.assist-strip span,.assist-strip button,p.small,.legend span,.codehead button,p.cost,.morebtn,.login-foot{font-size:11.5px!important}
+pre.code{font-size:11.5px!important}
+.app-tag{font-size:10px!important}
+.scaleLab span{font-size:11px!important;line-height:1.25}
+@media(max-width:600px){.page-meta button{font-size:0!important;min-width:40px}.page-meta button .small-arrow{width:16px;height:16px}}
