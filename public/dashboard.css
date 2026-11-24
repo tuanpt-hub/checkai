@@ -55,7 +55,10 @@ body:has(#app[hidden]) .skip-link{display:none}
 /* ---------- Menu dọc ẩn/hiện + tiêu đề theo trang ---------- */
 .nav-toggle{display:inline-grid;place-items:center;width:40px;height:40px;min-height:40px;padding:0;border:1px solid var(--line);border-radius:10px;background:#fff;color:#3b4354;flex:none;box-shadow:none}
 .nav-toggle:hover{background:#f5f6f9}.nav-toggle svg{width:20px;height:20px}
-.app-title{min-width:0}.app-title>div{min-width:0}.app-title strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px!important;max-width:none!important}
+.app-title{min-width:0}
+.app-logo{display:flex;align-items:center;gap:12px;min-width:0}.app-logo img{height:30px;width:auto;display:block;flex:none}
+.app-tag{border-left:1px solid #d7dbe3;padding-left:12px;font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10px;line-height:1.35;letter-spacing:.08em;color:#0A5CF5;font-weight:600;white-space:nowrap}
+.off-audit{display:none!important}
 body.nav-collapsed .workspace{grid-template-columns:minmax(0,1fr)!important}body.nav-collapsed .sidebar{display:none}
 .nav-backdrop{display:none}
 @media(max-width:900px){
@@ -72,10 +75,11 @@ body.nav-collapsed .workspace{grid-template-columns:minmax(0,1fr)!important}body
   .sidebar-account b{display:block!important}.sidebar-account .avatar{display:grid!important}.sidebar-account #userChip{max-width:none!important}
   .brand{padding:0 4px 10px!important;width:auto!important}
   .appbar{display:flex!important;flex-wrap:wrap;align-items:center;gap:10px 12px}
-  .app-title{display:flex!important;flex:1 1 auto;align-items:center;gap:10px}.app-title div>span{display:block!important;font-size:11px!important}
+  .app-title{display:flex!important;flex:1 1 auto;align-items:center;gap:12px}
   .toolbar{flex:1 1 100%}
 }
-@media(max-width:600px){.app-title strong{font-size:15px!important}}
+@media(max-width:600px){.app-logo img{height:26px}.app-tag{font-size:9px;padding-left:10px}.app-logo{gap:10px}}
+@media(max-width:370px){.app-tag{display:none}}
 @media(prefers-reduced-motion:reduce){.sidebar{transition:none!important}}
 @media print{.nav-toggle,.nav-backdrop{display:none!important}}
 
