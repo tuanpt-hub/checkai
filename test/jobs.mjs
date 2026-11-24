@@ -35,6 +35,7 @@ try {
   });
   await t('kiểm tra đầu vào: loại việc, AI, câu hỏi, hồ sơ chuẩn, hạn mức hôm nay', async () => {
     assert.equal((await call('/api/probe?op=create', { auditId: 'aud-1', kind: 'xyz', items: probeItems(['claude'], 1) })).data.error.code, 'bad_kind');
+    assert.equal((await call('/api/probe?op=create', { auditId: 'aud-1', kind: 'gen:CO DAU CACH', items: [{ key: 'a', payload: { prompt: 'abc' } }] })).data.error.code, 'bad_kind');
     assert.equal((await call('/api/probe?op=create', { auditId: 'aud-1', kind: 'probe', items: [{ key: 'x', payload: { engine: 'skynet', prompt: 'abc' } }], params: { judge } })).data.error.code, 'bad_engine');
     assert.equal((await call('/api/probe?op=create', { auditId: 'aud-1', kind: 'probe', items: probeItems(['claude'], 1), params: { judge: { truth: '' } } })).data.error.code, 'bad_params');
     process.env.DAILY_CALL_LIMIT = '3';
@@ -100,7 +101,7 @@ try {
     const j = await waitJob(id); assert.equal(j.status, 'done'); assert.equal(j.done, 3, 'cả 3 lượt kẹt được chạy lại');
   });
   await t('loại việc "soạn/chấm" (dùng cho giai đoạn 2 và 3): JSON và văn bản', async () => {
-    const r = await call('/api/probe?op=create', { auditId: 'aud-5', kind: 'gen', items: [{ key: 'a', payload: { prompt: globalThis.CheckAIProbe.judgePrompt(judge, 'B', [{ id: 'B1', q: 'NetSpace là gì?', a: 'NetSpace là công ty truyền thông.' }]), json: true } }, { key: 'b', payload: { prompt: 'Viết một câu giới thiệu NetSpace.', json: false } }], params: { feature: 'test' } });
+    const r = await call('/api/probe?op=create', { auditId: 'aud-5', kind: 'gen:test', items: [{ key: 'a', payload: { prompt: globalThis.CheckAIProbe.judgePrompt(judge, 'B', [{ id: 'B1', q: 'NetSpace là gì?', a: 'NetSpace là công ty truyền thông.' }]), json: true } }, { key: 'b', payload: { prompt: 'Viết một câu giới thiệu NetSpace.', json: false } }], params: { feature: 'test' } });
     assert.equal(r.status, 200, JSON.stringify(r.data)); const j = await waitJob(r.data.job.id); assert.equal(j.status, 'done'); assert.equal(j.done, 2);
     const res = (await call('/api/probe?op=results', { id: j.id })).data.items; assert.ok(Array.isArray(res.find((x) => x.key === 'a').result.json)); assert.ok(res.find((x) => x.key === 'b').result.text.length > 0);
   });

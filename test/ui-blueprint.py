@@ -9,6 +9,12 @@ def check(name, cond, extra=""):
     global ok
     print(("  ✓ " if cond else "  ✗ ") + name + ((" – " + str(extra)[:220]) if extra and not cond else "")); ok = ok and bool(cond)
 async def saved(pg): await pg.wait_for_function("document.querySelector('#saveState').textContent==='Đã lưu'", timeout=15000)
+async def run_gen(pg, sel, kind, timeout=90000):
+    """Bấm một tác vụ AI chạy nền và chờ ĐÚNG việc mới cùng loại được gộp xong vào audit."""
+    n = await pg.evaluate(f"(jobsByAudit[cur]||[]).filter(j=>j.kind==='{kind}'&&j.appliedAt).length")
+    await pg.click(sel)
+    await pg.wait_for_function(f"(jobsByAudit[cur]||[]).filter(j=>j.kind==='{kind}'&&j.appliedAt).length>{n} && !applying.size", timeout=timeout)
+    await pg.wait_for_timeout(250)
 async def main():
     async with async_playwright() as p:
         b = await p.chromium.launch(); ctx = await b.new_context(viewport={"width": 1300, "height": 900}, accept_downloads=True); pg = await ctx.new_page(); errs = []
@@ -35,13 +41,13 @@ async def main():
 
         print("Chẩn đoán từ → sang")
         todo = await pg.evaluate("pScores(audits[cur]).filter(x=>!x.reached).length")
-        await pg.click('[data-act="bpGen"]'); await pg.wait_for_function("!busy", timeout=60000); await pg.wait_for_timeout(300)
+        await run_gen(pg, '[data-act="bpGen"]', 'gen:bp'); await pg.wait_for_timeout(300)
         n = await pg.evaluate("Object.keys(audits[cur].blueprint.pillars).length")
         check("soạn chẩn đoán cho mọi trụ cột chưa đạt đích", n == todo, (n, todo))
         bp = await pg.evaluate("Object.values(audits[cur].blueprint.pillars).map(d=>[d.changes.length,d.dropped,d.changes.every(c=>c.criteria.length&&c.basis)])")
         check("đề xuất thiếu căn cứ hoặc mã tiêu chí sai đều bị loại", all(r[1] == 2 and r[2] for r in bp), bp)
         check("bảng từ → sang có tầng, căn cứ, việc làm ngay", 'Quy trình' in await pg.inner_text('#view') and 'Họp chốt quy trình' in await pg.inner_text('#view') and 'đã loại 2 đề xuất' in await pg.inner_text('#view'))
-        await pg.click('[data-act="bpOne"][data-p="PR"]'); await pg.wait_for_function("!busy", timeout=30000)
+        await run_gen(pg, '[data-act="bpOne"][data-p="PR"]', 'gen:bp')
         check("soạn lại riêng một trụ cột", 'Đã soạn chẩn đoán cho 1 trụ cột' in await pg.inner_text('.okbox'))
 
         print("Chỉ số kết quả sau khi hỏi AI")
@@ -51,7 +57,7 @@ async def main():
         check("1.6 lấy từ nhóm B và có đánh giá", o16['n'] == 18 and o16['status'] in ('Đạt', 'Chưa đạt'), o16)
 
         print("Kế hoạch theo trụ cột và xuất tài liệu")
-        await pg.click('[data-act="plan"]'); await pg.wait_for_function("!busy", timeout=30000); await pg.wait_for_timeout(200)
+        await run_gen(pg, '[data-act="plan"]', 'gen:plan'); await pg.wait_for_timeout(200)
         check("mỗi việc trong kế hoạch có nhãn trụ cột", await pg.evaluate("document.querySelectorAll('.plan-card .p-chip').length") >= 2)
         await pg.click('[data-act="planBy"][data-v="pillar"]'); await pg.wait_for_timeout(200)
         heads = await pg.evaluate("[...document.querySelectorAll('.plan-card')].length && [...document.querySelectorAll('#view h3.small')].map(h=>h.textContent)")
