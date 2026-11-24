@@ -142,3 +142,15 @@ input[type=checkbox],input[type=radio]{accent-color:#0a5cf5}
 .appbar .toolbar .primary{box-shadow:0 0 20px rgba(10,92,245,.55)}
 .appbar .audit-menu>summary{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18);color:#fff}
 .appbar button:focus-visible,.appbar summary:focus-visible,.appbar select:focus-visible{outline:3px solid #22d3ee;outline-offset:2px}
+
+/* Menu ⋯ nằm trong thanh nền tối: chữ các mục phải là màu tối (trước đây kế thừa chữ trắng → mục "Nhập dữ liệu" vô hình) */
+.appbar .audit-menu>div{color:var(--text)}
+.appbar .audit-menu>div button{color:var(--text);background:#fff}
+.appbar .audit-menu>div button:hover:not(:disabled){background:#f3f8ff}
+.appbar .audit-menu>div .danger-button{color:#c94343}
+/* Logo brand.ai.vn xếp dọc: thanh bên và trang đăng nhập */
+.brand.brand-v{display:block;width:auto!important;padding:2px 13px 18px!important;text-decoration:none}
+.brand.brand-v img{width:132px!important;height:auto!important;display:block}
+.login-wordmark img{width:120px;height:auto;display:block}
+.login-mobile-brand img{width:108px!important;height:auto!important;display:block}
+@media(max-width:900px){.brand.brand-v{padding:0 4px 12px!important}.brand.brand-v img{width:120px!important}}
