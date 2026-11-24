@@ -32,7 +32,7 @@ function collectRoutes(dir, prefix = '/api') {
   return out;
 }
 
-const MIME = { '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.xml': 'application/xml', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.txt': 'text/plain', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const MIME = { '.webp': 'image/webp', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.xml': 'application/xml', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.txt': 'text/plain', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 export async function startServer(port = Number(process.env.PORT) || 3000) {
   const routes = collectRoutes(path.join(root, 'api'));

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { HttpError, envInt, getIp, extractJSON } from './util.js';
-import { rest } from './supabase.js';
+import { rest, rpc } from './supabase.js';
 import { ask, configured, MODELS } from './providers.js';
 import { modelOptions } from './model-options.js';
 
@@ -27,10 +27,22 @@ export async function linkFromRequest(req) {
 }
 
 const tries = new Map();
-export function limitIp(req, key, max, windowMs) {
-  const k = `${key}|${getIp(req)}`, now = Date.now(), list = (tries.get(k) || []).filter(t => now - t < windowMs);
-  if (list.length >= max) throw new HttpError(429, 'too_many_requests', 'Thao tác quá nhanh. Đợi một lát rồi thử lại.');
+/** Chỉ dùng trong kiểm thử: xóa bộ đếm trong bộ nhớ để giả lập một phiên bản máy chủ khác. */
+export const _resetMemoryLimits = () => tries.clear();
+const TOO_MANY = () => new HttpError(429, 'too_many_requests', 'Thao tác quá nhanh. Đợi một lát rồi thử lại.');
+/** Giới hạn tần suất theo IP. Lớp 1: bộ nhớ của phiên bản máy chủ (nhanh). Lớp 2 (shared): đếm chung trong Supabase
+ *  cho mọi phiên bản – dùng cho thao tác dễ bị lạm dụng. Supabase lỗi/chưa có bảng thì chỉ dùng lớp 1 (không chặn nhầm khách thật). */
+export async function limitIp(req, key, max, windowMs, { shared = false } = {}) {
+  const ip = getIp(req), k = `${key}|${ip}`, now = Date.now(), list = (tries.get(k) || []).filter(t => now - t < windowMs);
+  if (list.length >= max) throw TOO_MANY();
   list.push(now); tries.set(k, list); if (tries.size > 5000) tries.clear();
+  if (!shared) return;
+  try {
+    const id = crypto.createHash('sha256').update(ip + '|' + (process.env.SUPABASE_SECRET_KEY || '')).digest('hex').slice(0, 24);
+    const r = await rpc('rl_hit', { p_key: `${key}:${id}`, p_window_seconds: Math.max(1, Math.round(windowMs / 1000)), p_max: max });
+    if (r.status === 200 && r.json === false) throw TOO_MANY();
+    if (r.status !== 200) console.warn('[rate-limit] dùng bộ nhớ (Supabase', r.status + ')');
+  } catch (e) { if (e && e.code === 'too_many_requests') throw e; console.warn('[rate-limit] dùng bộ nhớ:', e && e.message); }
 }
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

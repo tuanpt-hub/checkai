@@ -167,6 +167,36 @@ try {
     assert.equal((await call('/api/leads?op=remove', { id: leadId })).status, 403, 'csrf header required');
     delete process.env.ADMIN_EMAILS;
   });
+  await t('giới hạn tần suất đếm chung trong Supabase: đổi phiên bản máy chủ vẫn bị chặn; Supabase lỗi thì không chặn nhầm', async () => {
+    const { _resetMemoryLimits } = await import('../api/_lib/intake.js');
+    const body = { name: 'Thử', email: 'rl@abc.vn', consent: true, turnstile: 'ok-token' }, H = { 'X-Forwarded-For': '10.55.0.1' };
+    for (let i = 0; i < 5; i++) { _resetMemoryLimits(); assert.equal((await call('/api/hc?op=lead', body, H)).status, 200, 'lượt ' + (i + 1)); }
+    _resetMemoryLimits(); const sixth = await call('/api/hc?op=lead', body, H);
+    assert.equal(sixth.status, 429, 'lượt 6 bị chặn dù bộ nhớ đã xóa (giả lập phiên bản khác)'); assert.equal(sixth.data.error.code, 'too_many_requests');
+    f.db.rlDown = true; _resetMemoryLimits();
+    assert.equal((await call('/api/hc?op=lead', body, { 'X-Forwarded-For': '10.55.0.2' })).status, 200, 'Supabase lỗi: vẫn phục vụ, dùng bộ nhớ');
+    f.db.rlDown = false;
+  });
+  await t('khách tiềm năng nâng cao: giao người phụ trách, đếm tổng toàn bộ, phân trang 200', async () => {
+    const login = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json', 'X-ABR': '1' }, body: JSON.stringify({ email: 'staff@netspace.vn', password: USERS['staff@netspace.vn'] }) });
+    const S = { Cookie: login.headers.getSetCookie().map((c) => c.split(';')[0]).join('; '), 'X-ABR': '1' };
+    const st = await call('/api/leads?op=staff', null, S); assert.equal(st.status, 200); assert.ok(st.data.staff.some((x) => x.email === 'staff@netspace.vn'));
+    const first = (await call('/api/leads', null, S)).data.leads[0];
+    assert.equal((await call('/api/leads?op=update', { id: first.id, assigned_to: 'ai-do@la.vn' }, S)).data.error.code, 'bad_owner');
+    const a = await call('/api/leads?op=update', { id: first.id, assigned_to: 'Staff@NetSpace.vn' }, S); assert.equal(a.status, 200); assert.equal(a.data.lead.assigned_to, 'staff@netspace.vn');
+    let c = (await call('/api/leads', null, S)).data.counts; assert.equal(c.byOwner['staff@netspace.vn'], 1); assert.equal(c.total, c.unassigned + 1);
+    assert.equal((await call('/api/leads?op=update', { id: first.id, assigned_to: '' }, S)).data.lead.assigned_to, null, 'bỏ giao');
+    // phân trang: thêm 205 khách, trang đầu 200 + hasMore, trang sau phần còn lại, tổng đúng
+    const t0 = Date.now(); for (let i = 0; i < 205; i++) { const id = 'p' + String(i).padStart(4, '0') + '-0000-4000-8000-000000000000'; f.db.leads.set(id, { id, source: 'form', status: i % 3 ? 'contacted' : 'new', email: `k${i}@x.vn`, name: 'K' + i, created_at: new Date(t0 - i * 1000).toISOString(), utm: {} }); }
+    const p1 = (await call('/api/leads', null, S)).data; assert.equal(p1.leads.length, 200); assert.equal(p1.hasMore, true); assert.ok(p1.counts.total >= 205);
+    const p2 = (await call('/api/leads?before=' + encodeURIComponent(p1.leads[199].created_at), null, S)).data;
+    const ids = new Set([...p1.leads, ...p2.leads].map((x) => x.id)); assert.equal(ids.size, p1.leads.length + p2.leads.length, 'không trùng'); assert.equal(ids.size, p1.counts.total, 'đủ toàn bộ');
+    assert.equal((await call('/api/leads?before=khong-hop-le', null, S)).data.leads.length, 200, 'tham số sai bị bỏ qua');
+    for (const k of [...f.db.leads.keys()]) if (k.startsWith('p0') || k.startsWith('p01') || k.startsWith('p02')) f.db.leads.delete(k);
+    // Chưa chạy SQL 006: đếm tổng vẫn đúng (không ra 0)
+    f.db.noOwnerCol = true; const n = (await call('/api/leads', null, S)).data; f.db.noOwnerCol = false;
+    assert.equal(n.counts.total, f.db.leads.size, 'đếm tổng đúng khi chưa có cột người phụ trách');
+  });
   await t('định tuyến theo tên miền: brand.ai.vn ra landing, tên miền khác ra công cụ', async () => {
     const http = await import('node:http');
     const get = (path, host) => new Promise((res) => http.get({ host: '127.0.0.1', port: server.address().port, path, headers: { Host: host } }, (r) => { let d = ''; r.on('data', (c) => (d += c)); r.on('end', () => res({ status: r.statusCode, body: d })); }));

@@ -10,7 +10,7 @@ const clearMustChange = async (email) => { await rest('PATCH', `staff?email=eq.$
 export const setpw = route(async (req, res) => {
   allowMethods(req, ['POST']);
   assertCsrf(req);
-  limitIp(req, 'setpw', 10, 15 * 60_000);
+  await limitIp(req, 'setpw', 10, 15 * 60_000, { shared: true });
   const b = await readJson(req, 8_000);
   const at = String(b.access_token || ''), rt = String(b.refresh_token || '');
   if (at.length < 20 || at.length > 4000) throw new HttpError(400, 'bad_link', 'Đường dẫn không hợp lệ. Mở lại đường dẫn trong email.');
@@ -29,7 +29,7 @@ export const setpw = route(async (req, res) => {
 /** POST /api/me?op=password {current, password} – tự đổi mật khẩu; sau mật khẩu tạm thì không cần mật khẩu hiện tại. */
 export const password = route(async (req, res) => {
   allowMethods(req, ['POST']);
-  limitIp(req, 'chpw', 10, 15 * 60_000);
+  await limitIp(req, 'chpw', 10, 15 * 60_000, { shared: true });
   const user = await requireUser(req, res);
   const b = await readJson(req, 4_000);
   const pw = checkPassword(b.password);

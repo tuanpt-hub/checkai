@@ -147,6 +147,14 @@ Biến môi trường mới:
 
 SQL: chạy `supabase/migrations/003_leads_health_checks.sql` một lần. Kiểm thử: `node test/hc.mjs` (trong `npm test`) và `python3 test/ui-site.py` (cần `npm run dev:fake`; landing chạy thử ở `/site/home.html`).
 
+## Hiệu năng, giới hạn tần suất, khách tiềm năng nâng cao
+
+- **Vùng chạy hàm:** `vercel.json` đặt `"regions": ["bom1"]` (Mumbai), cạnh Supabase `ap-south-1`, để mỗi truy vấn cơ sở dữ liệu không phải đi về Hồng Kông. Nếu sau này chuyển Supabase sang Singapore, đổi thành `sin1`.
+- **Cache tệp tĩnh:** ảnh 1 ngày, CSS/JS 5 phút (kèm `stale-while-revalidate`). Logo hiển thị dùng WebP; giữ PNG cho ảnh chia sẻ và dữ liệu có cấu trúc.
+- **Giới hạn tần suất:** lớp bộ nhớ cho mọi thao tác; thêm lớp đếm chung trong Supabase (`rl_hit`, bảng `rate_limits`, SQL 006) cho biểu mẫu tư vấn, đăng ký/xác minh Health Check, đặt/đổi mật khẩu, gửi hồ sơ, AI gợi ý hồ sơ. Supabase lỗi hoặc chưa chạy SQL 006 thì tự dùng lớp bộ nhớ.
+- **Khách tiềm năng:** giao người phụ trách (cột `assigned_to`, SQL 006), lọc "Của tôi / Chưa giao / từng người", xuất CSV (UTF-8 có BOM cho Excel, tự tải hết các trang), phân trang 200 với "Tải thêm", đếm tổng trên toàn bộ khách. Chưa chạy SQL 006 thì đếm vẫn đúng, chỉ phần giao người phụ trách báo cần chạy SQL.
+- **Cỡ chữ:** tối thiểu 11–12px theo vai trò (đo trên mọi trang: từ 1.179 xuống 28 đoạn dưới 11px, chỉ còn nhãn trang trí viết hoa 10px).
+
 ## Quản lý người dùng (app.brand.ai.vn)
 
 Tab **Người dùng** (mục QUẢN TRỊ, chỉ quản trị viên): thêm, sửa tên, đổi vai trò **Quản trị viên / Nhân viên**, khóa/mở khóa, đặt lại mật khẩu, xóa tài khoản. Tài khoản nằm ở Supabase Auth; vai trò, khóa, cờ "phải đổi mật khẩu" ở bảng `staff` (`supabase/migrations/005_staff.sql`).
