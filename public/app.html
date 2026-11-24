@@ -630,7 +630,7 @@ function submitterContact(s){if(!s)return "";const out=[];if(s.email&&/^[^\s@"<>
 async function intakeNew(){const a=A();if(!a||busy)return;flash.intake="";flash.intakeOk="";
   if(a._v==null||dirty.has(a.id))await saveAudit(a.id);
   if(a._v==null){flash.intake="Chưa lưu được audit lên máy chủ. Thử lại sau ít giây.";return render()}
-  try{const r=await api("/api/intake-links?op=links",{method:"POST",body:{auditId:a.id,days:Number(draft.intakeDays||14)}});intake[a.id]={...(intake[a.id]||{}),newLink:location.origin+"/intake#t="+r.token};await loadIntake(a,true)}
+  try{const r=await api("/api/intake-links?op=links",{method:"POST",body:{auditId:a.id,days:Number(draft.intakeDays||14)}});intake[a.id]={...(intake[a.id]||{}),newLink:((me&&me.intakeBase)||location.origin+"/intake")+"#t="+r.token};await loadIntake(a,true)}
   catch(e){if(e.code!=="unauthorized")flash.intake=emsg(e);render()}}
 async function intakeRevoke(id){const a=A();try{await api("/api/intake-links?op=links&id="+encodeURIComponent(id),{method:"DELETE"});if(intake[a.id])intake[a.id].newLink="";await loadIntake(a,true)}catch(e){if(e.code!=="unauthorized"){flash.intake=emsg(e);render()}}}
 async function intakeApply(id){const a=A();if(!a)return;const st=intake[a.id]||{},s=(st.subs||[]).find(x=>x.id===id),box=document.querySelector(`[data-sub="${CSS.escape(id)}"]`);if(!s||!box)return;
